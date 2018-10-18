@@ -11,16 +11,16 @@
 #include "Reader.h"
 
 char *readLine(int fd, char delimiter, int* endOfFile) {
-     int size, end;
+     int size, end, read_value;
      char buff[1];
      char *input;
      input = malloc(sizeof(char) * 1);
      size = 1;
      end = 0;
-
      while(end == 0) {
-          if (read(fd, buff, 1) == 0) {
-               //EOF
+          read_value = read(fd, buff, 1);
+          if (read_value <= 0) {
+               //EOF or error
                *endOfFile = end = 1;
           } else {
                if(buff[0] == delimiter) {
@@ -34,5 +34,7 @@ char *readLine(int fd, char delimiter, int* endOfFile) {
           input = realloc(input, sizeof(char) * size);
 
      }
+     input[size - 1] = '\0';
+
      return input;
 }

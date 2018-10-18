@@ -10,7 +10,7 @@ Configuration.o: Configuration.c Configuration.h Reader.h
 	gcc -c Configuration.c $(CFLAGS)
 Connection.o: Connection.c Connection.h Configuration.h
 	gcc -c Connection.c $(CFLAGS)
-Files.o: Files.c Files.h Connection.h
+Files.o: Files.c Files.h Connection.h Reader.h
 	gcc -c Files.c $(CFLAGS)
 Exit.o: Exit.c Exit.h Connection.h Configuration.h
 	gcc -c Exit.c $(CFLAGS)
