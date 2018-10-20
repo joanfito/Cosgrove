@@ -25,6 +25,7 @@
 #define FILE_FOUND_PATTERN "File: %s\n"
 #define SEND_FILE_PATTERN "Sending %s....\n"
 #define FILE_SENT_MSG "File sent\n"
+#define FILES_PATH "./files/%s"
 #define FILES_NAMES_PATH "./files/names"
 #define SCAN_ERROR_MSG "An error occurred while scaning the files\n"
 
@@ -61,6 +62,36 @@ int isImage(char *filename);
 *
 ********************************************************************/
 int isAstronomicalData(char *filename);
+
+/*******************************************************************
+*
+* @Name: sendImage
+* @Purpose: Send an image to Lionel
+* @Arguments: filename (in) = name of the file
+* @Return: --
+*
+********************************************************************/
+void sendImage(char *filename);
+
+/*******************************************************************
+*
+* @Name: sendAstronomicalData
+* @Purpose: Send an astronomical data file to Lionel
+* @Arguments: filename (in) = name of the file
+* @Return: --
+*
+********************************************************************/
+void sendAstronomicalData(char *filename);
+
+/*******************************************************************
+*
+* @Name: removeFile
+* @Purpose: Remove a file
+* @Arguments: filename (in) = name of the file
+* @Return: --
+*
+********************************************************************/
+void removeFile(filename);
 
 
 #endif

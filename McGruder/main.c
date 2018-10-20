@@ -25,12 +25,20 @@
 #define CONNECTION_LIONEL_MSG "Connecting to Lionel...\n"
 #define STARTING_PATTERN "Starting %s.\n"
 
+Configuration config;
+
+void searchAlarm() {
+     write(1, TESTING_FILES_MSG, strlen(TESTING_FILES_MSG));
+     scanDirectory(config);
+     alarm(config.search_time);
+}
+
 int main(int argc, char *argv[]) {
      if (argc < 2) {
           write(1, INVALID_ARGS_ERROR_MSG, strlen(INVALID_ARGS_ERROR_MSG));
           return -1;
      } else {
-          Configuration config = readConfiguration(argv[1]);
+          config = readConfiguration(argv[1]);
           if (!invalidConfig(config)) {
                char buff[100];
                int bytes = 0, connection;
@@ -47,13 +55,13 @@ int main(int argc, char *argv[]) {
                     write(1, CONNECTION_READY_MSG, strlen(CONNECTION_READY_MSG));
                     copyConfig(config);
                     signal(SIGINT, closeMcGruder);
+                    signal(SIGALRM, searchAlarm);
+                    alarm(config.search_time);
 
                     while (1) {
                          //Scan the files folder of the telescope
                          write(1, WAITING_MSG, strlen(WAITING_MSG));
-                         sleep(config.search_time);
-                         write(1, TESTING_FILES_MSG, strlen(TESTING_FILES_MSG));
-                         scanDirectory(config);
+                         pause();
                     }
                } else {
                     write(1, CONNECTION_ERROR_MSG, strlen(CONNECTION_ERROR_MSG));

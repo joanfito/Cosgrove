@@ -11,10 +11,10 @@
 #include "Files.h"
 
 void scanDirectory(Configuration config) {
-     int endOfFile = 0, fd = 0, i;
-     int img_size = 0, data_size = 0, bytes;
+     int endOfFile = 0, fd = 0;
+     int file_found = 0, bytes;
      char buff[100];
-     char *output, **images, **data;
+     char *output, *file;
      int script;
 
      //Bash script to get all the names
@@ -25,7 +25,7 @@ void scanDirectory(Configuration config) {
                write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
                break;
           case 0:
-               execl("/bin/bash","bash","./files/getnames.sh",NULL);
+               execl("/bin/bash","bash","./getnames.sh",NULL);
                break;
           default:
                //Wait until the script is executed
@@ -37,52 +37,29 @@ void scanDirectory(Configuration config) {
                     write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
                } else {
 
-                    images = malloc(sizeof(char *));
-                    data = malloc(sizeof(char *));
                     while (!endOfFile) {
                         output = readLine(fd, '\n', &endOfFile);
 
-                        if (isImage(output)) {
-                             images[img_size] = output;
-                             bytes = sprintf(buff, FILE_FOUND_PATTERN, images[img_size]);
+                        if (isImage(output) || isAstronomicalData(output)) {
+                             file = output;
+                             bytes = sprintf(buff, FILE_FOUND_PATTERN, file);
                              write(1, buff, bytes);
-
-                             images = realloc(images, sizeof(char *) * (img_size + 1));
-                             img_size++;
-                        }
-
-                        if (isAstronomicalData(output)) {
-                             data[data_size] = output;
-                             bytes = sprintf(buff, FILE_FOUND_PATTERN, data[data_size]);
-                             write(1, buff, bytes);
-
-                             data = realloc(data, sizeof(char *) * (data_size + 1));
-                             data_size++;
+                             file_found = 1;
+                             break;
                         }
                    }
                    close(fd);
 
-                   if (data_size == 0 && img_size == 0) {
+                   if (!file_found) {
                        write(1, FILES_NOT_FOUND_MSG, strlen(FILES_NOT_FOUND_MSG));
                    } else {
-                        //Send the files
-                        for (i = 0; i < img_size; i++) {
-                             bytes = sprintf(buff, SEND_FILE_PATTERN, images[i]);
-                             write(1, buff, bytes);
-                             sendFile();
-                             write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
-                        }
-
-                        for (i = 0; i < data_size; i++) {
-                             bytes = sprintf(buff, SEND_FILE_PATTERN, data[i]);
-                             write(1, buff, bytes);
-                             sendFile();
-                             write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
+                        //Send the file
+                        if (isImage(file)) {
+                             sendImage(file);
+                        } else if (isAstronomicalData(file)) {
+                             sendAstronomicalData(file);
                         }
                    }
-
-                   free(images);
-                   free(data);
                }
                break;
      }
@@ -137,4 +114,46 @@ int isAstronomicalData(char *filename) {
           return (strcmp(type, "TXT") == 0 || strcmp(type, "txt") == 0);
      }
      return 0;
+}
+
+void sendImage(char *filename) {
+     int bytes;
+     char buff[100];
+
+     bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
+     write(1, buff, bytes);
+     sendFile();
+     removeFile(filename);
+     write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
+}
+
+void sendAstronomicalData(char *filename) {
+     int bytes;
+     char buff[100];
+
+     bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
+     write(1, buff, bytes);
+     sendFile();
+     removeFile(filename);
+     write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
+}
+
+void removeFile(char *filename) {
+     char path[100];
+     int script;
+
+     script = fork();
+
+     switch (script) {
+          case -1:
+               write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
+               break;
+          case 0:
+               sprintf(path, FILES_PATH, filename);
+               execl("/bin/rm","rm", "-rf", path, NULL);
+               break;
+          default:
+               wait(0);
+               break;
+     }
 }
