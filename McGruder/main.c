@@ -26,10 +26,11 @@
 #define STARTING_PATTERN "Starting %s.\n"
 
 Configuration config;
+int socket_fd;
 
 void searchAlarm() {
      write(1, TESTING_FILES_MSG, strlen(TESTING_FILES_MSG));
-     scanDirectory(config);
+     scanDirectory(socket_fd);
      alarm(config.search_time);
 }
 
@@ -41,7 +42,7 @@ int main(int argc, char *argv[]) {
           config = readConfiguration(argv[1]);
           if (!invalidConfig(config)) {
                char buff[100];
-               int bytes = 0, socket_fd;
+               int bytes = 0;
 
                printConfig(config);
                bytes = sprintf(buff, STARTING_PATTERN, config.name);

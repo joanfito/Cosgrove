@@ -47,7 +47,7 @@ int connectLionel(Configuration config) {
      if (socket_fd == CONNECTION_FAILED) {
           return CONNECTION_FAILED;
      }
-     
+
      //Send the connection frame
      frame_ok = sendFrame(socket_fd, (char)CONNECTION_FRAME_TYPE, "[]", (short)strlen(config.name), config.name);
      if (frame_ok == SOCKET_CONNECTION_KO) {
@@ -85,7 +85,10 @@ int disconnectLionel(Configuration config, int socket_fd) {
      return strcmp(header, "[CONOK]") == 0 ? DISCONNECTION_SUCCESSFUL : DISCONNECTION_FAILED;
 }
 
-int sendFile() {
+int sendFile(int socket_fd) {
+     if (socket_fd < 0) {
+          return FILE_SENDING_FAILED;
+     }
      //return FILE_SENDING_FAILED;
      return FILE_SENDING_SUCCESSFUL;
 }

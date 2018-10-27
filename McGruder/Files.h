@@ -37,11 +37,11 @@
 *
 * @Name: scanDirectory
 * @Purpose: Scan the files directory to send its files
-* @Arguments: config (in) = Configuration object of McGruder
+* @Arguments: socket_fd (in) = socket file descriptor
 * @Return: --
 *
 ********************************************************************/
-void scanDirectory(Configuration config);
+void scanDirectory(int socket_fd);
 
 /*******************************************************************
 *
@@ -71,27 +71,29 @@ int isAstronomicalData(char *filename);
 * @Return: --
 *
 ********************************************************************/
-void sendImage(char *filename);
+void sendImage(char *filename, int socket_fd);
 
 /*******************************************************************
 *
 * @Name: sendAstronomicalData
 * @Purpose: Send an astronomical data file to Lionel
 * @Arguments: filename (in) = name of the file
+*             socket_fd (in) = socket file descriptor
 * @Return: --
 *
 ********************************************************************/
-void sendAstronomicalData(char *filename);
+void sendAstronomicalData(char *filename, int socket_fd);
 
 /*******************************************************************
 *
 * @Name: removeFile
 * @Purpose: Remove a file
 * @Arguments: filename (in) = name of the file
+*             socket_fd (in) = socket file descriptor
 * @Return: --
 *
 ********************************************************************/
-void removeFile(filename);
+void removeFile(char *filename);
 
 
 #endif

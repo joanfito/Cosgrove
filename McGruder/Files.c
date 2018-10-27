@@ -10,7 +10,7 @@
 
 #include "Files.h"
 
-void scanDirectory(Configuration config) {
+void scanDirectory(int socket_fd) {
      int endOfFile = 0, fd = 0;
      int file_found = 0, bytes;
      char buff[100];
@@ -55,9 +55,9 @@ void scanDirectory(Configuration config) {
                    } else {
                         //Send the file
                         if (isImage(file)) {
-                             sendImage(file);
+                             sendImage(file, socket_fd);
                         } else if (isAstronomicalData(file)) {
-                             sendAstronomicalData(file);
+                             sendAstronomicalData(file, socket_fd);
                         }
                    }
                }
@@ -116,24 +116,24 @@ int isAstronomicalData(char *filename) {
      return 0;
 }
 
-void sendImage(char *filename) {
+void sendImage(char *filename, int socket_fd) {
      int bytes;
      char buff[100];
 
      bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
      write(1, buff, bytes);
-     sendFile();
+     sendFile(socket_fd);
      removeFile(filename);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
 }
 
-void sendAstronomicalData(char *filename) {
+void sendAstronomicalData(char *filename, int socket_fd) {
      int bytes;
      char buff[100];
 
      bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
      write(1, buff, bytes);
-     sendFile();
+     sendFile(socket_fd);
      removeFile(filename);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
 }

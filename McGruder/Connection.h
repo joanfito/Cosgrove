@@ -88,12 +88,12 @@ int disconnectLionel(Configuration config, int socket_fd);
 *
 * @Name: sendFile
 * @Purpose: Send a file to Lionel
-* @Arguments: --
+* @Arguments: socket_fd (in) = Socket file descriptor
 * @Return: FILE_SENDING_SUCCESSFUL, if the disconnection is okay,
 *          otherwise, FILE_SENDING_FAILED
 *
 ********************************************************************/
-int sendFile();
+int sendFile(int socket_fd);
 
 /*******************************************************************
 *
