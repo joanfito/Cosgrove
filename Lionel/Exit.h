@@ -15,14 +15,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
 #include "Connection.h"
-#include "Configuration.h"
 
 //Constants
+#define SHUT_DOWN_MSG "\nShutting down Lionel.\n"
 #define DISCONNECTION_PATTERN "\nDisconnecting %s.\n"
-#define DISCONNECTION_ERROR_MSG "Something failed during the disconnection. Try again.\n"
+#define SHUT_DOWN_ERROR_MSG "Something failed during the shut down. Try again.\n"
 
 //Type definitions
 
@@ -31,17 +30,17 @@
 /*******************************************************************
 *
 * @Name: closeMcGruder
-* @Purpose: Close safely McGruder
+* @Purpose: Close safely Lionel
 * @Arguments: --
 * @Return: --
 *
 ********************************************************************/
-void closeMcGruder();
+void closeLionel();
 
 /*******************************************************************
 *
 * @Name: safeClose
-* @Purpose: Close the resources used by McGruder
+* @Purpose: Close the resources used by Lionel
 * @Arguments: --
 * @Return: --
 *
@@ -50,13 +49,12 @@ void safeClose();
 
 /*******************************************************************
 *
-* @Name: copyConfig
-* @Purpose: Make a local copy of a Configuration object
-* @Arguments: original_conf (in) = Configuration object to copy
-*             original_socket (in) = socket file descriptor to copy
+* @Name: copyConnection
+* @Purpose: Make a local copy of a Connection object
+* @Arguments: original (in) = Connection object to copy
 * @Return: --
 *
 ********************************************************************/
-void copyConfigAndFd(Configuration original_conf, int original_socket);
+void copyConnection(Connection original);
 
 #endif

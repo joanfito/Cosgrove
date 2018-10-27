@@ -13,6 +13,7 @@
 
 //Libraries
 #include "Reader.h"
+#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -26,11 +27,10 @@
 
 //Type definitions
 typedef struct {
-     char *name;
-     int search_time;
      char *ip;
-     int is_ip;
-     int port;
+     int mcgruder_port;
+     int mctavish_port;
+     int seconds;
 } Configuration;
 
 //Functions
@@ -77,15 +77,5 @@ int invalidConfig(Configuration config);
 *
 ********************************************************************/
 void printConfig(Configuration config);
-
-/*******************************************************************
-*
-* @Name: isIp
-* @Purpose: Check if the given ip is an ip or a host name
-* @Arguments: ip (in) = ip to check
-* @Return: 1 if is an ip, 0 if it is a host name
-*
-********************************************************************/
-int isIp(char *ip);
 
 #endif

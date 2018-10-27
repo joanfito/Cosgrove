@@ -4,13 +4,14 @@
 * @Purpose: Handle the termination of McGruder
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
-* @Date: 17/10/2018
+* @Date: 27/10/2018
 *
 ********************************************************************/
 
 #include "Exit.h"
 
 Configuration config;
+int socket_fd;
 
 void closeMcGruder() {
      char buff[100];
@@ -18,7 +19,7 @@ void closeMcGruder() {
      bytes = sprintf(buff, DISCONNECTION_PATTERN, config.name);
      write(1, buff, bytes);
 
-     if (disconnect() == DISCONNECTION_SUCCESSFUL) {
+     if (disconnectLionel(config, socket_fd) == DISCONNECTION_SUCCESSFUL) {
           safeClose();
      } else {
           write(1, DISCONNECTION_ERROR_MSG, strlen(DISCONNECTION_ERROR_MSG));
@@ -26,9 +27,11 @@ void closeMcGruder() {
 }
 
 void safeClose() {
+     close(socket_fd);
      exit(0);
 }
 
-void copyConfig(Configuration original) {
-     config = original;
+void copyConfigAndFd(Configuration original_conf, int original_socket) {
+     config = original_conf;
+     socket_fd = original_socket;
 }

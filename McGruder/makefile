@@ -8,7 +8,7 @@ Reader.o: Reader.c Reader.h
 	gcc -c Reader.c $(CFLAGS)
 Configuration.o: Configuration.c Configuration.h Reader.h
 	gcc -c Configuration.c $(CFLAGS)
-Connection.o: Connection.c Connection.h Configuration.h
+Connection.o: Connection.c Connection.h Configuration.h Reader.h
 	gcc -c Connection.c $(CFLAGS)
 Files.o: Files.c Files.h Connection.h Reader.h
 	gcc -c Files.c $(CFLAGS)

@@ -29,17 +29,16 @@ Configuration readConfiguration(char *filename) {
          //If the file has more than 4 lines, we ignore them
          switch (line_counter) {
               case 0:
-                    config.name = output;
+                    config.ip = output;
                     break;
               case 1:
-                    config.search_time = atoi(output);
+                    config.mcgruder_port = atoi(output);
                     break;
               case 2:
-                    config.ip = output;
-                    config.is_ip = isIp(config.ip);
+                    config.mctavish_port = atoi(output);
                     break;
               case 3:
-                    config.port = atoi(output);
+                    config.seconds = atoi(output);
                     break;
          }
          line_counter++;
@@ -53,16 +52,15 @@ Configuration readConfiguration(char *filename) {
 
 Configuration configError() {
      Configuration error;
-     error.name = "ERROR";
-     error.search_time = CONFIG_ERROR;
      error.ip = "0.0.0.0";
-     error.is_ip = CONFIG_ERROR;
-     error.port = CONFIG_ERROR;
+     error.mcgruder_port = CONFIG_ERROR;
+     error.mctavish_port = CONFIG_ERROR;
+     error.seconds = CONFIG_ERROR;
      return error;
 }
 
 int invalidConfig(Configuration config) {
-     return config.port == CONFIG_ERROR;
+     return config.mcgruder_port == CONFIG_ERROR;
 }
 
 void printConfig(Configuration config) {
@@ -70,41 +68,13 @@ void printConfig(Configuration config) {
      int bytes;
 
      write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
-     bytes = sprintf(buff, "\t-> Name: %s\n", config.name);
+     bytes = sprintf(buff, "\t-> IP: %s\n", config.ip);
      write(1, buff, bytes);
-     bytes = sprintf(buff, "\t-> Search time: %d\n", config.search_time);
+     bytes = sprintf(buff, "\t-> Port for McGruder: %d\n", config.mcgruder_port);
      write(1, buff, bytes);
-     if (config.is_ip == 1) {
-          bytes = sprintf(buff, "\t-> IP: %s\n", config.ip);
-          write(1, buff, bytes);
-     } else {
-          bytes = sprintf(buff, "\t-> Host name: %s\n", config.ip);
-          write(1, buff, bytes);
-     }
-     bytes = sprintf(buff, "\t-> Port: %d\n", config.port);
+     bytes = sprintf(buff, "\t-> Port for McTavish: %d\n", config.mctavish_port);
+     write(1, buff, bytes);
+     bytes = sprintf(buff, "\t-> Seconds: %d\n", config.seconds);
      write(1, buff, bytes);
      write(1, PRINT_CONFIG_END, strlen(PRINT_CONFIG_END));
-}
-
-int isIp(char *ip) {
-     int i = 0, j = 0, k = 0;
-     char aux[100];
-
-     //If there is any char (a/A->z/Z), we consider it to be a host name
-     while (ip[i] != '\0') {
-          j = 0;
-          while (ip[i] != '.' && ip[i] != '\0') {
-               aux[j] = ip[i];
-               i++;
-               j++;
-          }
-          i++;
-          aux[j] = '\0';
-          for (k = 0; k < j; k++) {
-               if ((aux[k] >= 'a' && aux[k] <= 'z') || (aux[k] >= 'A' && aux[k] <= 'Z')) {
-                    return 0;
-               }
-          }
-     }
-     return 1;
 }

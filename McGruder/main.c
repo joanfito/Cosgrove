@@ -6,7 +6,7 @@
 *           To execute: ./mcgruder <config_file>
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
-* @Date: 17/10/2018
+* @Date: 27/10/2018
 *
 ********************************************************************/
 
@@ -41,19 +41,19 @@ int main(int argc, char *argv[]) {
           config = readConfiguration(argv[1]);
           if (!invalidConfig(config)) {
                char buff[100];
-               int bytes = 0, connection;
+               int bytes = 0, socket_fd;
 
-               printConfig(config); //TODO treure-ho
+               printConfig(config);
                bytes = sprintf(buff, STARTING_PATTERN, config.name);
                write(1, buff, bytes);
 
                //Start the connection with Lionel
                write(1, CONNECTION_LIONEL_MSG, strlen(CONNECTION_LIONEL_MSG));
-               connection = connect(config);
+               socket_fd = connectLionel(config);
 
-               if (connection == CONNECTION_SUCCESSFUL) {
+               if (socket_fd != CONNECTION_FAILED) {
                     write(1, CONNECTION_READY_MSG, strlen(CONNECTION_READY_MSG));
-                    copyConfig(config);
+                    copyConfigAndFd(config, socket_fd);
                     signal(SIGINT, closeMcGruder);
                     signal(SIGALRM, searchAlarm);
                     alarm(config.search_time);
