@@ -10,15 +10,10 @@
 
 #include "Exit.h"
 
-Configuration config;
-int socket_fd;
+extern Configuration config;
+extern int socket_fd;
 
 void closeMcGruder() {
-     char buff[100];
-     int bytes = 0;
-     bytes = sprintf(buff, DISCONNECTION_PATTERN, config.name);
-     write(1, buff, bytes);
-
      if (disconnectLionel(config, socket_fd) == DISCONNECTION_SUCCESSFUL) {
           safeClose();
      } else {
@@ -27,11 +22,15 @@ void closeMcGruder() {
 }
 
 void safeClose() {
-     close(socket_fd);
-     exit(0);
-}
+     char buff[100];
+     int bytes = 0;
+     
+     bytes = sprintf(buff, DISCONNECTION_PATTERN, config.name);
+     write(1, buff, bytes);
 
-void copyConfigAndFd(Configuration original_conf, int original_socket) {
-     config = original_conf;
-     socket_fd = original_socket;
+     close(socket_fd);
+     free(config.name);
+     free(config.ip);
+
+     exit(0);
 }

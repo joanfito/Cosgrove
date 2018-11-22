@@ -29,7 +29,8 @@ Configuration readConfiguration(char *filename) {
          //If the file has more than 4 lines, we ignore them
          switch (line_counter) {
               case 0:
-                    config.ip = output;
+                    config.ip = malloc(sizeof(char) * (strlen(output) + 1));
+                    strcpy(config.ip, output);
                     break;
               case 1:
                     config.mcgruder_port = atoi(output);
@@ -42,9 +43,8 @@ Configuration readConfiguration(char *filename) {
                     break;
          }
          line_counter++;
+         free(output);
     }
-
-    //Create the configuration
 
     close(fd);
     return config;

@@ -17,8 +17,10 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "Reader.h"
 #include "Configuration.h"
+#include "Exit.h"
 
 //Constants
 #define FRAME_TYPE_SIZE 1
@@ -35,6 +37,9 @@
 #define SOCKET_CONNECTION_KO 9
 #define CONNECTION_FRAME_TYPE 0x01
 #define DISCONNECTION_FRAME_TYPE 0x02
+#define FILE_FRAME_TYPE 0x03
+#define EMPTY_HEADER "[]"
+#define CONNECTION_OK_HEADER "[CONOK]"
 
 //Type definitions
 
@@ -135,5 +140,16 @@ int sendFrame(int socket_fd, char type, char *header, short length, char *data);
 *
 ********************************************************************/
 int readFrame(int socket_fd, char *type, char **header, short *length, char **data);
+
+/*******************************************************************
+*
+* @Name: lionelListener
+* @Purpose: Listens the socket of the lionel process
+* @Arguments: arg (in) = socket_fd
+* @Return: arg
+*
+********************************************************************/
+void *lionelListener(void *arg);
+
 
 #endif

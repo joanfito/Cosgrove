@@ -48,15 +48,4 @@ void closeMcGruder();
 ********************************************************************/
 void safeClose();
 
-/*******************************************************************
-*
-* @Name: copyConfig
-* @Purpose: Make a local copy of a Configuration object
-* @Arguments: original_conf (in) = Configuration object to copy
-*             original_socket (in) = socket file descriptor to copy
-* @Return: --
-*
-********************************************************************/
-void copyConfigAndFd(Configuration original_conf, int original_socket);
-
 #endif

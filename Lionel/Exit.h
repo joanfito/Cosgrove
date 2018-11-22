@@ -47,14 +47,4 @@ void closeLionel();
 ********************************************************************/
 void safeClose();
 
-/*******************************************************************
-*
-* @Name: copyConnection
-* @Purpose: Make a local copy of a Connection object
-* @Arguments: original (in) = Connection object to copy
-* @Return: --
-*
-********************************************************************/
-void copyConnection(Connection original);
-
 #endif

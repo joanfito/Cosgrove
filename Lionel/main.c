@@ -40,8 +40,10 @@ int main(int argc, char *argv[]) {
 
                if (conn.socket_fd == SOCKET_CONNECTION_FAILED) {
                     write(1, CONNECTION_MCGRUDER_ERROR_MSG, strlen(CONNECTION_MCGRUDER_ERROR_MSG));
+                    free(conn.mcgruder);
+                    free(conn.mctavish);
+                    free(config.ip);
                } else {
-                    copyConnection(conn);
                     signal(SIGINT, closeLionel);
 
                     while (1) {
@@ -56,7 +58,8 @@ int main(int argc, char *argv[]) {
                          } else {
                               write(1, CONNECTION_MCGRUDER_ERROR_MSG, strlen(CONNECTION_MCGRUDER_ERROR_MSG));
                          }
-                         if (connectMcGruder(&conn.mcgruder[conn.num_mcgruder_processes - 1]) == CONNECT_MCGRUDER_KO) {
+
+                         if (connectMcGruder(conn.num_mcgruder_processes - 1) == CONNECT_MCGRUDER_KO) {
                               //If something goes wrong, we close the socket and remove the process
                               close(conn.mcgruder[conn.num_mcgruder_processes].fd);
                               conn.num_mcgruder_processes--;
@@ -64,9 +67,7 @@ int main(int argc, char *argv[]) {
                          }
                     }
                }
-
           }
-
      }
 
      return 0;

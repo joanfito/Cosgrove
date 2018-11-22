@@ -40,7 +40,7 @@ int openLionel(Configuration config) {
 }
 
 int connectLionel(Configuration config) {
-     int socket_fd, frame_ok;
+     int socket_fd, frame_ok, response;
      char type, *header, *data;
      short length;
      socket_fd = openLionel(config);
@@ -60,29 +60,41 @@ int connectLionel(Configuration config) {
           return CONNECTION_FAILED;
      }
 
-     return strcmp(header, "[CONOK]") == 0 ? socket_fd : CONNECTION_FAILED;
+     response = strcmp(header, "[CONOK]") == 0 ? socket_fd : CONNECTION_FAILED;
+
+     free(data);
+     free(header);
+
+     return response;
 }
 
 int disconnectLionel(Configuration config, int socket_fd) {
-     int frame_ok;
+     int frame_ok, response;
      char type, *header, *data;
      short length;
 
-     if (socket_fd != CONNECTION_FAILED) {
-          //Send the connection frame
-          frame_ok = sendFrame(socket_fd, (char)DISCONNECTION_FRAME_TYPE, "[]", (short)strlen(config.name), config.name);
-          if (frame_ok == SOCKET_CONNECTION_KO) {
-               return DISCONNECTION_FAILED;
-          }
+     //Send the connection frame
+     frame_ok = sendFrame(socket_fd, (char)DISCONNECTION_FRAME_TYPE, "[]", (short)strlen(config.name), config.name);
 
-          //Read the Lionel answer
-          frame_ok = readFrame(socket_fd, &type, &header, &length, &data);
-          if (frame_ok == SOCKET_CONNECTION_KO) {
-               return DISCONNECTION_FAILED;
-          }
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          //If the socket is down, we can disconnect the mcgruder process
+          return DISCONNECTION_SUCCESSFUL;
      }
 
-     return strcmp(header, "[CONOK]") == 0 ? DISCONNECTION_SUCCESSFUL : DISCONNECTION_FAILED;
+     //Read the Lionel answer
+     frame_ok = readFrame(socket_fd, &type, &header, &length, &data);
+
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          //If the socket is down, we can disconnect the mcgruder process
+          return DISCONNECTION_SUCCESSFUL;
+     }
+
+     response = strcmp(header, "[CONOK]") == 0 ? DISCONNECTION_SUCCESSFUL : DISCONNECTION_FAILED;
+
+     free(data);
+     free(header);
+
+     return response;
 }
 
 int sendFile(int socket_fd) {
@@ -140,4 +152,30 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
      if (response < 0) return SOCKET_CONNECTION_KO;
 
      return SOCKET_CONNECTION_OK;
+}
+
+void *lionelListener(void *arg) {
+     int *socket_fd = (int*)arg;
+     char type, *header, *data;
+     short length;
+     int response;
+
+     //Read a frame
+     response = readFrame(*socket_fd, &type, &header, &length, &data);
+
+     if (response == SOCKET_CONNECTION_KO) {
+          //If the socket is down, we can disconnect the mcgruder process
+          safeClose();
+     }
+
+     switch (type) {
+          case (char)DISCONNECTION_FRAME_TYPE:
+               safeClose();
+               break;
+     }
+
+     free(header);
+     free(data);
+
+     return (void *) arg;
 }

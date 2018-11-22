@@ -49,6 +49,7 @@ void scanDirectory(int socket_fd) {
                         }
                    }
                    close(fd);
+                   free(output);
 
                    if (!file_found) {
                        write(1, FILES_NOT_FOUND_MSG, strlen(FILES_NOT_FOUND_MSG));
@@ -68,6 +69,7 @@ void scanDirectory(int socket_fd) {
 int isImage(char *filename) {
      int i = 0, j = 0;
      char type[4];
+
      //Read the name
      while (filename[i] != '.' && filename[i] != '\0') {
           i++;
@@ -93,6 +95,7 @@ int isImage(char *filename) {
 int isAstronomicalData(char *filename) {
      int i = 0, j = 0;
      char type[4];
+
      //Read the name
      while (filename[i] != '.' && filename[i] != '\0') {
           i++;

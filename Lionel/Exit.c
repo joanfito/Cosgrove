@@ -10,7 +10,8 @@
 
 #include "Exit.h"
 
-Connection conn;
+extern Connection conn;
+extern Configuration config;
 
 void closeLionel() {
      write(1, SHUT_DOWN_MSG, strlen(SHUT_DOWN_MSG));
@@ -21,23 +22,23 @@ void safeClose() {
      int i;
 
      //Close the file descriptors
-     close(conn.socket_fd);
-
      for (i = 0; i < conn.num_mcgruder_processes; i++) {
-          close(conn.mcgruder[i].fd);
+          if (conn.mcgruder[i].fd != SOCKET_CONNECTION_FAILED) {
+               disconnectMcGruder(i);
+               free(conn.mcgruder[i].telescope_name);
+          }
      }
 
      for (i = 0; i < conn.num_mctavish_processes; i++) {
           close(conn.mctavish[i].fd);
      }
 
+     close(conn.socket_fd);
+
      //Free the memory
      free(conn.mcgruder);
      free(conn.mctavish);
+     free(config.ip);
 
      exit(0);
-}
-
-void copyConnection(Connection original) {
-     conn = original;
 }

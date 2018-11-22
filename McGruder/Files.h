@@ -89,7 +89,6 @@ void sendAstronomicalData(char *filename, int socket_fd);
 * @Name: removeFile
 * @Purpose: Remove a file
 * @Arguments: filename (in) = name of the file
-*             socket_fd (in) = socket file descriptor
 * @Return: --
 *
 ********************************************************************/

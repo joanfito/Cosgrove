@@ -10,16 +10,18 @@
 
 #include "Connection.h"
 
+extern Connection conn;
+
 Connection createConnection() {
-     Connection conn;
+     Connection new;
 
-     conn.socket_fd = 0;
-     conn.mcgruder = (McGruder*) malloc(sizeof(McGruder));
-     conn.mctavish = (McTavish*) malloc(sizeof(McTavish));
-     conn.num_mcgruder_processes = 0;
-     conn.num_mctavish_processes = 0;
+     new.socket_fd = 0;
+     new.mcgruder = (McGruder*)calloc(1, sizeof(McGruder));
+     new.mctavish = (McTavish*)calloc(1, sizeof(McTavish));
+     new.num_mcgruder_processes = 0;
+     new.num_mctavish_processes = 0;
 
-     return conn;
+     return new;
 }
 
 int createSocketForMcGruder(Configuration config) {
@@ -27,7 +29,7 @@ int createSocketForMcGruder(Configuration config) {
      struct sockaddr_in lionel;
 
      //Get a IPv4 & TCP socket file descriptor
-     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+     socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
      if (socket_fd < 0) {
           return SOCKET_CONNECTION_FAILED;
      }
@@ -67,48 +69,69 @@ int acceptMcGruder(int socket_fd) {
      return mcgruder_fd;
 }
 
-int connectMcGruder(McGruder *mcgruder) {
+int connectMcGruder(int index) {
      char buff[100];
      char type, *header, *data;
      short length;
      int response, bytes = 0;
 
      //Read the frame
-     response = readFrame(mcgruder->fd, &type, &header, &length, &data);
-     if (response == SOCKET_CONNECTION_KO) return CONNECT_MCGRUDER_KO;
+     response = readFrame(conn.mcgruder[index].fd, &type, &header, &length, &data);
+     if (response == SOCKET_CONNECTION_KO) {
+          free(header);
+          free(data);
+          return CONNECT_MCGRUDER_KO;
+     }
 
      if (type == (char)CONNECTION_FRAME_TYPE) {
-          //Send a connection ok frame
-          response = sendFrame(mcgruder->fd, (char)CONNECTION_FRAME_TYPE, "[CONOK]", 0, NULL);
-          if (response == SOCKET_CONNECTION_KO) return CONNECT_MCGRUDER_KO;
+          conn.mcgruder[index].telescope_name = malloc(sizeof(char) * (strlen(data) + 1));
+          strcpy(conn.mcgruder[index].telescope_name, data);
 
-          mcgruder->telescope_name = data;
-          bytes = sprintf(buff, CONNECTION_MCGRUDER_PATTERN, mcgruder->telescope_name);
+          //Send a connection ok frame
+          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, "[CONOK]", 0, NULL);
+          if (response == SOCKET_CONNECTION_KO) {
+               free(header);
+               free(data);
+               return CONNECT_MCGRUDER_KO;
+          }
+
+          bytes = sprintf(buff, CONNECTION_MCGRUDER_PATTERN, conn.mcgruder[index].telescope_name);
           write(1, buff, bytes);
      } else {
           //Send a connection ko frame
-          response = sendFrame(mcgruder->fd, (char)CONNECTION_FRAME_TYPE, "[CONKO]", 0, NULL);
-          if (response == SOCKET_CONNECTION_KO) return CONNECT_MCGRUDER_KO;
+          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, "[CONKO]", 0, NULL);
+          if (response == SOCKET_CONNECTION_KO) {
+               free(header);
+               free(data);
+               return CONNECT_MCGRUDER_KO;
+          }
      }
+
+     free(header);
+     free(data);
 
      //Throw a new thread to listen the mcgruder process
      pthread_t thread_mcgruder;
-     response = pthread_create(&thread_mcgruder, NULL, mcgruderListener, mcgruder);
+
+     response = pthread_create(&thread_mcgruder, NULL, mcgruderListener, &index);
      if (response != 0) return CONNECT_MCGRUDER_KO;
 
      return CONNECT_MCGRUDER_OK;
 }
 
-int disconnectMcGruder(McGruder mcgruder) {
+int disconnectMcGruder(int index) {
      char buff[100];
-     int response, bytes = 0;
+     int bytes = 0;
 
      //Send a connection ok frame
-     response = sendFrame(mcgruder.fd, (char)DISCONNECTION_FRAME_TYPE, "[CONOK]", 0, NULL);
-     if (response == SOCKET_CONNECTION_KO) return CONNECT_MCGRUDER_KO;
+     sendFrame(conn.mcgruder[index].fd, (char)DISCONNECTION_FRAME_TYPE, "[CONOK]", 0, NULL);
 
-     bytes = sprintf(buff, DISCONNECTION_MCGRUDER_PATTERN, mcgruder.telescope_name);
+     bytes = sprintf(buff, DISCONNECTION_MCGRUDER_PATTERN, conn.mcgruder[index].telescope_name);
      write(1, buff, bytes);
+
+     close(conn.mcgruder[index].fd);
+     conn.mcgruder[index].fd = SOCKET_CONNECTION_FAILED;
+     free(conn.mcgruder[index].telescope_name);
 
      return DISCONNECT_MCGRUDER_OK;
 }
@@ -158,25 +181,34 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 }
 
 void *mcgruderListener(void *arg) {
-     McGruder *mcgruder = (McGruder*)arg;
      char type, *header, *data;
      short length;
-     int response;
+     int response, end = 0;
 
-     //Read a frame
-     response = readFrame(mcgruder->fd, &type, &header, &length, &data);
-     if (response == SOCKET_CONNECTION_KO) {
-          //If the socket is down, we can disconnect the mcgruder process
-          disconnectMcGruder(*mcgruder);
+     int index = *((int*)arg);
+
+     while (!end) {
+          //Read a frame
+          response = readFrame(conn.mcgruder[index].fd, &type, &header, &length, &data);
+
+          if (response == SOCKET_CONNECTION_KO) {
+               //If the socket is down, we can disconnect the mcgruder process
+               disconnectMcGruder(index);
+               end = 1;
+          }
+
+          switch (type) {
+               case (char)DISCONNECTION_FRAME_TYPE:
+                    disconnectMcGruder(index);
+                    end = 1;
+                    break;
+               case (char)FILE_FRAME_TYPE:
+                    break;
+          }
      }
 
-     switch (type) {
-          case (char)DISCONNECTION_FRAME_TYPE:
-               disconnectMcGruder(*mcgruder);
-               break;
-          case (char)FILE_FRAME_TYPE:
-               break;
-     }
+     free(header);
+     free(data);
 
      return (void *) arg;
 }

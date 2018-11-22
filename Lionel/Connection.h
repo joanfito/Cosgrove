@@ -37,6 +37,9 @@
 #define CONNECTION_FRAME_TYPE 0x01
 #define DISCONNECTION_FRAME_TYPE 0x02
 #define FILE_FRAME_TYPE 0x03
+#define EMPTY_HEADER "[]"
+#define CONNECTION_OK_HEADER "[CONOK]"
+#define CONNECTION_KO_HEADER "[CONKO]"
 
 
 //Type definitions
@@ -83,7 +86,7 @@ int createSocketForMcGruder(Configuration config);
 
 /*******************************************************************
 *
-* @Name: connectMcGruder
+* @Name: acceptMcGruder
 * @Purpose: Listen the socket in order to connect with McGruder
 * @Arguments: socket_fd (in) = socket file descriptor
 * @Return: the mcgruder file descriptor, if the connection is okay,
@@ -106,12 +109,12 @@ int acceptMcGruder(int socket_fd);
 *                   Header (2 bytes): [CONOK/CONKO]
 *                   Length (2 bytes): 0
 *                   Data (0 bytes): --
-* @Arguments: mcgruder (in/out) = mcgruder process information
+* @Arguments: index (in) = mcgruder process index
 * @Return: CONNECT_MCGRUDER_OK, if the connection is okay,
 *          otherwise, CONNECT_MCGRUDER_KO
 *
 ********************************************************************/
-int connectMcGruder(McGruder *mcgruder);
+int connectMcGruder(int index);
 
 /*******************************************************************
 *
@@ -122,12 +125,12 @@ int connectMcGruder(McGruder *mcgruder);
 *                   Header (2 bytes): [CONOK/CONKO]
 *                   Length (2 bytes): 0
 *                   Data (0 bytes): --
-* @Arguments: mcgruder (in) = mcgruder process information
+* @Arguments: index (in) = mcgruder process index
 * @Return: DISCONNECT_MCGRUDER_OK, if the disconnection is okay,
 *          otherwise, DISCONNECT_MCGRUDER_KO
 *
 ********************************************************************/
-int disconnectMcGruder(McGruder mcgruder);
+int disconnectMcGruder(int index);
 
 /*******************************************************************
 *
@@ -163,7 +166,7 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 *
 * @Name: mcgruderListener
 * @Purpose: Listens the socket of the mcgruder process
-* @Arguments: arg (in) = mcgruder process
+* @Arguments: arg (in) = index
 * @Return: arg
 *
 ********************************************************************/

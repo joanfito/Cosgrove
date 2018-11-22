@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
           config = readConfiguration(argv[1]);
           if (!invalidConfig(config)) {
                char buff[100];
-               int bytes = 0;
+               int bytes = 0, response;
 
                printConfig(config);
                bytes = sprintf(buff, STARTING_PATTERN, config.name);
@@ -54,10 +54,15 @@ int main(int argc, char *argv[]) {
 
                if (socket_fd != CONNECTION_FAILED) {
                     write(1, CONNECTION_READY_MSG, strlen(CONNECTION_READY_MSG));
-                    copyConfigAndFd(config, socket_fd);
                     signal(SIGINT, closeMcGruder);
                     signal(SIGALRM, searchAlarm);
                     alarm(config.search_time);
+
+                    //Throw a new thread to listen the lionel process
+                    //pthread_t thread_lionel;
+
+                    //response = pthread_create(&thread_lionel, NULL, lionelListener, &socket_fd);
+                    //if (response != 0) closeMcGruder();
 
                     while (1) {
                          //Scan the files folder of the telescope
@@ -65,6 +70,8 @@ int main(int argc, char *argv[]) {
                          pause();
                     }
                } else {
+                    free(config.name);
+                    free(config.ip);
                     write(1, CONNECTION_ERROR_MSG, strlen(CONNECTION_ERROR_MSG));
                }
           }

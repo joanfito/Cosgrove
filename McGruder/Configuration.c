@@ -29,13 +29,16 @@ Configuration readConfiguration(char *filename) {
          //If the file has more than 4 lines, we ignore them
          switch (line_counter) {
               case 0:
-                    config.name = output;
+                    config.name = malloc(sizeof(char) * (strlen(output) + 1));
+                    strcpy(config.name, output);
                     break;
               case 1:
                     config.search_time = atoi(output);
                     break;
               case 2:
-                    config.ip = output;
+                    config.ip = malloc(sizeof(char) * (strlen(output) + 1));
+                    strcpy(config.ip, output);
+
                     config.is_ip = isIp(config.ip);
                     break;
               case 3:
@@ -43,9 +46,8 @@ Configuration readConfiguration(char *filename) {
                     break;
          }
          line_counter++;
+         free(output);
     }
-
-    //Create the configuration
 
     close(fd);
     return config;
@@ -93,18 +95,22 @@ int isIp(char *ip) {
      //If there is any char (a/A->z/Z), we consider it to be a host name
      while (ip[i] != '\0') {
           j = 0;
+
           while (ip[i] != '.' && ip[i] != '\0') {
                aux[j] = ip[i];
                i++;
                j++;
           }
+          
           i++;
           aux[j] = '\0';
+
           for (k = 0; k < j; k++) {
                if ((aux[k] >= 'a' && aux[k] <= 'z') || (aux[k] >= 'A' && aux[k] <= 'Z')) {
                     return 0;
                }
           }
      }
+
      return 1;
 }
