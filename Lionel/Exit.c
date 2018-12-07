@@ -1,6 +1,6 @@
 /*******************************************************************
 *
-* @File: Files.h
+* @File: Exit.c
 * @Purpose: Handle the termination of McGruder
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
@@ -12,6 +12,7 @@
 
 extern Connection conn;
 extern Configuration config;
+extern Files files;
 
 void closeLionel() {
      write(1, SHUT_DOWN_MSG, strlen(SHUT_DOWN_MSG));
@@ -19,26 +20,35 @@ void closeLionel() {
 }
 
 void safeClose() {
-     int i;
+     int i, files_saved;
 
-     //Close the file descriptors
-     for (i = 0; i < conn.num_mcgruder_processes; i++) {
-          if (conn.mcgruder[i].fd != SOCKET_CONNECTION_FAILED) {
-               disconnectMcGruder(i);
-               free(conn.mcgruder[i].telescope_name);
-          }
+     files_saved = saveReceivedFiles(files);
+     if (files_saved == KALKUN_SAVED_OK) {
+         //Close Lionel if the files are saved
+         //Close the mcgruders
+         for (i = 0; i < conn.num_mcgruder_processes; i++) {
+              if (conn.mcgruder[i].fd != SOCKET_CONNECTION_FAILED) {
+                   disconnectMcGruder(i);
+                   free(conn.mcgruder[i].telescope_name);
+              }
+         }
+
+         //Close the mctavishes
+         for (i = 0; i < conn.num_mctavish_processes; i++) {
+              close(conn.mctavish[i].fd);
+         }
+
+         close(conn.socket_fd);
+
+         //Free the memory
+         free(conn.mcgruder);
+         free(conn.mctavish);
+         free(config.ip);
+         free(files.images);
+         free(files.astronomical_data);
+
+         exit(0);
+     } else {
+         write(1, SHUT_DOWN_ERROR_MSG, strlen(SHUT_DOWN_ERROR_MSG));
      }
-
-     for (i = 0; i < conn.num_mctavish_processes; i++) {
-          close(conn.mctavish[i].fd);
-     }
-
-     close(conn.socket_fd);
-
-     //Free the memory
-     free(conn.mcgruder);
-     free(conn.mctavish);
-     free(config.ip);
-
-     exit(0);
 }

@@ -1,6 +1,3 @@
-#ifndef _CONFIGURATION_H_
-#define _CONFIGURATION_H_
-
 /*******************************************************************
 *
 * @File: Configuration.h
@@ -11,6 +8,9 @@
 *
 ********************************************************************/
 
+#ifndef _CONFIGURATION_H_
+#define _CONFIGURATION_H_
+
 //Libraries
 #include "Reader.h"
 #include <string.h>
@@ -19,6 +19,10 @@
 #include <fcntl.h>
 
 //Constants
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #define OPEN_FILE_ERROR "An error occurred while opening the configuration file\n"
 #define PRINT_CONFIG_INI "\n*********** Configuration ***********\n"
 #define PRINT_CONFIG_END "*************************************\n\n\n"

@@ -49,7 +49,7 @@ int connectLionel(Configuration config) {
      }
 
      //Send the connection frame
-     frame_ok = sendFrame(socket_fd, (char)CONNECTION_FRAME_TYPE, "[]", (short)strlen(config.name), config.name);
+     frame_ok = sendFrame(socket_fd, (char)CONNECTION_FRAME_TYPE, EMPTY_HEADER, (short)strlen(config.name), config.name);
      if (frame_ok == SOCKET_CONNECTION_KO) {
           return CONNECTION_FAILED;
      }
@@ -60,7 +60,7 @@ int connectLionel(Configuration config) {
           return CONNECTION_FAILED;
      }
 
-     response = strcmp(header, "[CONOK]") == 0 ? socket_fd : CONNECTION_FAILED;
+     response = strcmp(header, CONNECTION_OK_HEADER) == 0 ? socket_fd : CONNECTION_FAILED;
 
      free(data);
      free(header);
@@ -74,7 +74,7 @@ int disconnectLionel(Configuration config, int socket_fd) {
      short length;
 
      //Send the connection frame
-     frame_ok = sendFrame(socket_fd, (char)DISCONNECTION_FRAME_TYPE, "[]", (short)strlen(config.name), config.name);
+     frame_ok = sendFrame(socket_fd, (char)DISCONNECTION_FRAME_TYPE, EMPTY_HEADER, (short)strlen(config.name), config.name);
 
      if (frame_ok == SOCKET_CONNECTION_KO) {
           //If the socket is down, we can disconnect the mcgruder process
@@ -89,25 +89,12 @@ int disconnectLionel(Configuration config, int socket_fd) {
           return DISCONNECTION_SUCCESSFUL;
      }
 
-     response = strcmp(header, "[CONOK]") == 0 ? DISCONNECTION_SUCCESSFUL : DISCONNECTION_FAILED;
+     response = strcmp(header, CONNECTION_OK_HEADER) == 0 ? DISCONNECTION_SUCCESSFUL : DISCONNECTION_FAILED;
 
      free(data);
      free(header);
 
      return response;
-}
-
-int sendFile(int socket_fd) {
-     if (socket_fd < 0) {
-          return FILE_SENDING_FAILED;
-     }
-     //return FILE_SENDING_FAILED;
-     return FILE_SENDING_SUCCESSFUL;
-}
-
-int sendChecksum() {
-     //return CHECKSUM_KO;
-     return CHECKSUM_OK;
 }
 
 int sendFrame(int socket_fd, char type, char *header, short length, char *data) {

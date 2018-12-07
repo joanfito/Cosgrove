@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -lpthread
+CFLAGS = -Wall -Wextra -lpthread -D_GNU_SOURCE
 OUT = mcgruder
 OBJ = main.o Reader.o Configuration.o Connection.o Files.o Exit.o
 all: $(OUT)

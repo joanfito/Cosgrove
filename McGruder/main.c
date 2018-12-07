@@ -41,12 +41,13 @@ int main(int argc, char *argv[]) {
      } else {
           config = readConfiguration(argv[1]);
           if (!invalidConfig(config)) {
-               char buff[100];
-               int bytes = 0, response;
+               char *buff;
+               int bytes = 0;
 
                printConfig(config);
-               bytes = sprintf(buff, STARTING_PATTERN, config.name);
+               bytes = asprintf(&buff, STARTING_PATTERN, config.name);
                write(1, buff, bytes);
+               free(buff);
 
                //Start the connection with Lionel
                write(1, CONNECTION_LIONEL_MSG, strlen(CONNECTION_LIONEL_MSG));

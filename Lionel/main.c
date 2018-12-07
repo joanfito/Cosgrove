@@ -15,6 +15,7 @@
 #include "Configuration.h"
 #include "Connection.h"
 #include "Exit.h"
+#include "Files.h"
 
 #define INVALID_ARGS_ERROR_MSG "Lionel needs a configuration file in order to work properly\n"
 #define STARTING_MSG "Starting Lionel.\n"
@@ -23,6 +24,7 @@
 
 Configuration config;
 Connection conn;
+Files files;
 
 int main(int argc, char *argv[]) {
      if (argc < 2) {
@@ -45,7 +47,8 @@ int main(int argc, char *argv[]) {
                     free(config.ip);
                } else {
                     signal(SIGINT, closeLionel);
-
+                    files = createFiles();
+                    
                     while (1) {
                          //Connect with the McGruder clients
                          write(1, WAITING_MSG, strlen(WAITING_MSG));

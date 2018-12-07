@@ -64,17 +64,21 @@ int invalidConfig(Configuration config) {
 }
 
 void printConfig(Configuration config) {
-     char buff[100];
-     int bytes;
+    char *buff;
+    int bytes;
 
-     write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
-     bytes = sprintf(buff, "\t-> IP: %s\n", config.ip);
-     write(1, buff, bytes);
-     bytes = sprintf(buff, "\t-> Port for McGruder: %d\n", config.mcgruder_port);
-     write(1, buff, bytes);
-     bytes = sprintf(buff, "\t-> Port for McTavish: %d\n", config.mctavish_port);
-     write(1, buff, bytes);
-     bytes = sprintf(buff, "\t-> Seconds: %d\n", config.seconds);
-     write(1, buff, bytes);
-     write(1, PRINT_CONFIG_END, strlen(PRINT_CONFIG_END));
+    write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
+    bytes = asprintf(&buff, "\t-> IP: %s\n", config.ip);
+    write(1, buff, bytes);
+    free(buff);
+    bytes = asprintf(&buff, "\t-> Port for McGruder: %d\n", config.mcgruder_port);
+    write(1, buff, bytes);
+    free(buff);
+    bytes = asprintf(&buff, "\t-> Port for McTavish: %d\n", config.mctavish_port);
+    write(1, buff, bytes);
+    free(buff);
+    bytes = asprintf(&buff, "\t-> Seconds: %d\n", config.seconds);
+    write(1, buff, bytes);
+    free(buff);
+    write(1, PRINT_CONFIG_END, strlen(PRINT_CONFIG_END));
 }

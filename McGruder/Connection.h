@@ -1,6 +1,3 @@
-#ifndef _CONNECTION_H_
-#define _CONNECTION_H_
-
 /*******************************************************************
 *
 * @File: Connection.h
@@ -10,6 +7,9 @@
 * @Date: 27/10/2018
 *
 ********************************************************************/
+
+#ifndef _CONNECTION_H_
+#define _CONNECTION_H_
 
 //Libraries
 #include <sys/socket.h>
@@ -23,6 +23,10 @@
 #include "Exit.h"
 
 //Constants
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #define FRAME_TYPE_SIZE 1
 #define FRAME_LENGTH_SIZE 2
 #define CONNECTION_SUCCESSFUL 0
@@ -35,11 +39,22 @@
 #define CHECKSUM_KO 7
 #define SOCKET_CONNECTION_OK 8
 #define SOCKET_CONNECTION_KO 9
+#define SEND_IMAGE_OK 10
+#define SEND_IMAGE_KO 11
+#define SEND_TXT_OK 12
+#define SEND_TXT_KO 13
 #define CONNECTION_FRAME_TYPE 0x01
 #define DISCONNECTION_FRAME_TYPE 0x02
 #define FILE_FRAME_TYPE 0x03
 #define EMPTY_HEADER "[]"
 #define CONNECTION_OK_HEADER "[CONOK]"
+#define CONNECTION_KO_HEADER "[CONKO]"
+#define FILE_OK_HEADER "[FILEOK]"
+#define FILE_KO_HEADER "[FILEKO]"
+#define CHECK_OK_HEADER "[CHECKOK]"
+#define CHECK_KO_HEADER "[CHECKKO]"
+#define METADATA_HEADER "[METADATA]"
+#define ENDFILE_HEADER "[ENDFILE]"
 
 //Type definitions
 
@@ -88,28 +103,6 @@ int connectLionel(Configuration config);
 *
 ********************************************************************/
 int disconnectLionel(Configuration config, int socket_fd);
-
-/*******************************************************************
-*
-* @Name: sendFile
-* @Purpose: Send a file to Lionel
-* @Arguments: socket_fd (in) = Socket file descriptor
-* @Return: FILE_SENDING_SUCCESSFUL, if the disconnection is okay,
-*          otherwise, FILE_SENDING_FAILED
-*
-********************************************************************/
-int sendFile(int socket_fd);
-
-/*******************************************************************
-*
-* @Name: sendChecksum
-* @Purpose: Send the checksum to Lionel
-* @Arguments: --
-* @Return: CHECKSUM_OK, if the disconnection is okay,
-*          otherwise, CHECKSUM_KO
-*
-********************************************************************/
-int sendChecksum();
 
 /*******************************************************************
 *

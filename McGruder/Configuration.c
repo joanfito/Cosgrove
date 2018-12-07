@@ -68,23 +68,31 @@ int invalidConfig(Configuration config) {
 }
 
 void printConfig(Configuration config) {
-     char buff[100];
+     char *buff;
      int bytes;
 
      write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
-     bytes = sprintf(buff, "\t-> Name: %s\n", config.name);
+     bytes = asprintf(&buff, "\t-> Name: %s\n", config.name);
      write(1, buff, bytes);
-     bytes = sprintf(buff, "\t-> Search time: %d\n", config.search_time);
+     free(buff);
+
+     bytes = asprintf(&buff, "\t-> Search time: %d\n", config.search_time);
      write(1, buff, bytes);
+     free(buff);
+
      if (config.is_ip == 1) {
-          bytes = sprintf(buff, "\t-> IP: %s\n", config.ip);
+          bytes = asprintf(&buff, "\t-> IP: %s\n", config.ip);
           write(1, buff, bytes);
+          free(buff);
      } else {
-          bytes = sprintf(buff, "\t-> Host name: %s\n", config.ip);
+          bytes = asprintf(&buff, "\t-> Host name: %s\n", config.ip);
           write(1, buff, bytes);
+          free(buff);
      }
-     bytes = sprintf(buff, "\t-> Port: %d\n", config.port);
+
+     bytes = asprintf(&buff, "\t-> Port: %d\n", config.port);
      write(1, buff, bytes);
+     free(buff);
      write(1, PRINT_CONFIG_END, strlen(PRINT_CONFIG_END));
 }
 
@@ -101,7 +109,7 @@ int isIp(char *ip) {
                i++;
                j++;
           }
-          
+
           i++;
           aux[j] = '\0';
 

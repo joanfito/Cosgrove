@@ -1,6 +1,3 @@
-#ifndef _CONNECTION_H_
-#define _CONNECTION_H_
-
 /*******************************************************************
 *
 * @File: Connection.h
@@ -11,6 +8,9 @@
 *
 ********************************************************************/
 
+#ifndef _CONNECTION_H_
+#define _CONNECTION_H_
+
 //Libraries
 #include <stdio.h>
 #include <sys/socket.h>
@@ -20,8 +20,13 @@
 #include <arpa/inet.h>
 #include "Configuration.h"
 #include "Reader.h"
+#include "Files.h"
 
 //Constants
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #define FRAME_TYPE_SIZE 1
 #define FRAME_LENGTH_SIZE 2
 #define CONNECTION_MCGRUDER_PATTERN "Connection Lionel - %s ready.\n"
@@ -34,12 +39,28 @@
 #define DISCONNECT_MCGRUDER_KO 4
 #define SOCKET_CONNECTION_OK 8
 #define SOCKET_CONNECTION_KO 9
+#define FILE_RECEIVED_OK 10
+#define FILE_RECEIVED_KO 11
+#define CHECKSUM_OK 12
+#define CHECKSUM_KO 13
+#define IMAGE_TYPE 14
+#define ASTRONOMICAL_DATA_TYPE 15
+#define ERROR_TYPE 16
 #define CONNECTION_FRAME_TYPE 0x01
 #define DISCONNECTION_FRAME_TYPE 0x02
 #define FILE_FRAME_TYPE 0x03
 #define EMPTY_HEADER "[]"
 #define CONNECTION_OK_HEADER "[CONOK]"
 #define CONNECTION_KO_HEADER "[CONKO]"
+#define FILE_OK_HEADER "[FILEOK]"
+#define FILE_KO_HEADER "[FILEKO]"
+#define CHECK_OK_HEADER "[CHECKOK]"
+#define CHECK_KO_HEADER "[CHECKKO]"
+#define METADATA_HEADER "[METADATA]"
+#define ENDFILE_HEADER "[ENDFILE]"
+#define RECEIVING_FILE_MSG "Receiving %s ...\n"
+#define FILE_RECEIVED_OK_MSG "File %s received.\n"
+#define FILE_RECEIVED_KO_MSG "Something failed while receiving %s.\n"
 
 
 //Type definitions
@@ -171,4 +192,41 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 *
 ********************************************************************/
 void *mcgruderListener(void *arg);
+
+/*******************************************************************
+*
+* @Name: receiveMetadata
+* @Purpose: Process the metadata frame
+* @Arguments: data (in) = data of the metadata frame
+* @Return: the type of the file (IMAGE_TYPE, ASTRONOMICAL_DATA_TYPE
+*          or ERROR_TYPE)
+*
+********************************************************************/
+int receiveMetadata(char *data);
+
+/*******************************************************************
+*
+* @Name: receiveFrame
+* @Purpose: Process a data frame
+* @Arguments: index (in) = mcgruder index
+*             type (in) = IMAGE_TYPE or ASTRONOMICAL_DATA_TYPE
+*             data (in) = data of the endfile frame
+* @Return: --
+*
+********************************************************************/
+void receiveFrame(short length, int type, char *data);
+
+/*******************************************************************
+*
+* @Name: receiveChecksum
+* @Purpose: Process the endfile frame
+* @Arguments: index (in) = mcgruder index
+*             type (in) = IMAGE_TYPE or ASTRONOMICAL_DATA_TYPE
+*             data (in) = data of the endfile frame
+* @Return: CHECKSUM_OK, if both checksums are the same,
+*          otherwise, CHECKSUM_KO
+*
+********************************************************************/
+int receiveChecksum(int index, int type, char *data);
+
 #endif

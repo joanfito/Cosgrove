@@ -13,8 +13,7 @@
 void scanDirectory(int socket_fd) {
      int endOfFile = 0, fd = 0;
      int file_found = 0, bytes;
-     char buff[100];
-     char *output, *file;
+     char *buff, *output, *file;
      int script;
 
      //Bash script to get all the names
@@ -41,9 +40,12 @@ void scanDirectory(int socket_fd) {
                         output = readLine(fd, '\n', &endOfFile);
 
                         if (isImage(output) || isAstronomicalData(output)) {
-                             file = output;
-                             bytes = sprintf(buff, FILE_FOUND_PATTERN, file);
+                             file = calloc(1, sizeof(char) * (strlen(output) + 1));
+                             strcpy(file, output);
+
+                             bytes = asprintf(&buff, FILE_FOUND_PATTERN, file);
                              write(1, buff, bytes);
+                             free(buff);
                              file_found = 1;
                              break;
                         }
@@ -60,6 +62,7 @@ void scanDirectory(int socket_fd) {
                         } else if (isAstronomicalData(file)) {
                              sendAstronomicalData(file, socket_fd);
                         }
+                        free(file);
                    }
                }
                break;
@@ -87,9 +90,9 @@ int isImage(char *filename) {
                i++;
           }
           type[j] = '\0';
-          return (strcmp(type, "JPG") == 0 || strcmp(type, "jpg") == 0);
      }
-     return 0;
+
+     return (strcmp(type, "jpg") == 0 || strcmp(type, "JPG") == 0);
 }
 
 int isAstronomicalData(char *filename) {
@@ -113,36 +116,229 @@ int isAstronomicalData(char *filename) {
                i++;
           }
           type[j] = '\0';
-
-          return (strcmp(type, "TXT") == 0 || strcmp(type, "txt") == 0);
      }
-     return 0;
+     return (strcmp(type, "txt") == 0 || strcmp(type, "TXT") == 0);
 }
 
-void sendImage(char *filename, int socket_fd) {
-     int bytes;
-     char buff[100];
+int sendImage(char *filename, int socket_fd) {
+     int bytes, frame_ok, size, fd, response;
+     char *buff, *metadata, *fullname, *frame, *checksum;
+     char *header, *data, type;
+     short length;
 
-     bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
+     bytes = asprintf(&fullname, FILES_PATH, filename);
+
+     fd = open(fullname, O_RDONLY);
+
+     if (fd < 0) {
+          free(fullname);
+          return SEND_IMAGE_KO;
+     }
+
+     bytes = asprintf(&buff, SEND_FILE_PATTERN, filename);
      write(1, buff, bytes);
-     sendFile(socket_fd);
-     removeFile(filename);
+     free(buff);
+
+     //Calculate the image checksum
+     checksum = calculateChecksum(fullname);
+     if (strlen(checksum) < 1) {
+          free(fullname);
+          free(checksum);
+          return SEND_IMAGE_KO;
+     }
+
+     //Get the image length
+     size = getFileSize(fullname);
+
+     //Create the metadata
+     asprintf(&metadata, METADATA_PATTERN, "jpg", size, filename);
+
+     //Send the metadata
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, METADATA_HEADER, (short)strlen(metadata), metadata);
+
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(checksum);
+          free(metadata);
+          safeClose();
+     }
+
+     free(metadata);
+
+     //Read if lionel is gonna listen us
+     response = readFrame(socket_fd, &type, &header, &length, &data);
+     if (response == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(header);
+          free(data);
+          safeClose();
+     }
+
+     if (strcmp(header, FILE_OK_HEADER) != 0) {
+         free(fullname);
+         free(header);
+         free(data);
+         return SEND_TXT_KO;
+     }
+
+     frame = calloc(1, sizeof(char) * FRAME_SIZE);
+
+     //TODO Decompose the image into smaller frames and sent it
+
+     free(frame);
+
+     //Send the checksum
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, (short)strlen(checksum), checksum);
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(checksum);
+          safeClose();
+     }
+     free(checksum);
+
+     //Lionel response
+     response = readFrame(socket_fd, &type, &header, &length, &data);
+     if (response == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(header);
+          free(data);
+          safeClose();
+     }
+
+     if (strcmp(header, CHECK_OK_HEADER) != 0) {
+         write(1, FILE_NOT_SENT_MSG, strlen(FILE_NOT_SENT_MSG));
+
+         free(fullname);
+         free(header);
+         free(data);
+
+         return SEND_IMAGE_KO;
+     }
+
+     removeFile(fullname);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
+
+     free(fullname);
+     free(header);
+     free(data);
+
+     return SEND_IMAGE_OK;
 }
 
-void sendAstronomicalData(char *filename, int socket_fd) {
-     int bytes;
-     char buff[100];
+int sendAstronomicalData(char *filename, int socket_fd) {
+     int bytes, size, response, frame_ok, fd;
+     char *buff, *fullname, *metadata, *frame, *checksum;
+     char *header, *data, type;
+     short length;
 
-     bytes = sprintf(buff, SEND_FILE_PATTERN, filename);
+     bytes = asprintf(&fullname, FILES_PATH, filename);
+
+     fd = open(fullname, O_RDONLY);
+
+     if (fd < 0) {
+          free(fullname);
+          return SEND_TXT_KO;
+     }
+
+     bytes = asprintf(&buff, SEND_FILE_PATTERN, filename);
      write(1, buff, bytes);
-     sendFile(socket_fd);
-     removeFile(filename);
+     free(buff);
+
+     //Calculate the image checksum
+     checksum = calculateChecksum(fullname);
+
+     if (strlen(checksum) < 1) {
+          free(fullname);
+          free(checksum);
+          return SEND_IMAGE_KO;
+     }
+
+     //Get the image length
+     size = getFileSize(fullname);
+
+     //Create the metadata
+     asprintf(&metadata, METADATA_PATTERN, "txt", size, filename);
+
+     //Send the metadata
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, METADATA_HEADER, (short)strlen(metadata), metadata);
+
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(metadata);
+          free(checksum);
+          safeClose();
+     }
+
+     free(metadata);
+
+     //Read if lionel is gonna listen us
+     response = readFrame(socket_fd, &type, &header, &length, &data);
+     if (response == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(header);
+          free(data);
+          safeClose();
+     }
+
+     if (strcmp(header, FILE_OK_HEADER) != 0) {
+         free(fullname);
+         free(header);
+         free(data);
+         return SEND_TXT_KO;
+     }
+
+     frame = calloc(1, sizeof(char) * (size + 1));
+     read(fd, frame, size);
+     frame[size] = '\0';
+
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, EMPTY_HEADER, (short)strlen(frame), frame);
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(checksum);
+          safeClose();
+     }
+
+     free(frame);
+
+     //Send the checksum
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, (short)strlen(checksum), checksum);
+     if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(checksum);
+          safeClose();
+     }
+     free(checksum);
+
+     //Lionel response
+     response = readFrame(socket_fd, &type, &header, &length, &data);
+     if (response == SOCKET_CONNECTION_KO) {
+          free(fullname);
+          free(header);
+          free(data);
+          safeClose();
+     }
+
+     if (strcmp(header, CHECK_OK_HEADER) != 0) {
+         write(1, FILE_NOT_SENT_MSG, strlen(FILE_NOT_SENT_MSG));
+
+         free(fullname);
+         free(header);
+         free(data);
+
+         return SEND_TXT_KO;
+     }
+
+     removeFile(fullname);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
+
+     free(fullname);
+     free(header);
+     free(data);
+
+     return SEND_TXT_OK;
 }
 
 void removeFile(char *filename) {
-     char path[100];
      int script;
 
      script = fork();
@@ -152,11 +348,72 @@ void removeFile(char *filename) {
                write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
                break;
           case 0:
-               sprintf(path, FILES_PATH, filename);
-               execl("/bin/rm","rm", "-rf", path, NULL);
+               execl("/bin/rm","rm", "-rf", filename, NULL);
                break;
           default:
                wait(0);
                break;
      }
+}
+
+char *calculateChecksum(char *filename) {
+     int md5sum, pipe_fd[2], endOfFile = 0;
+     char *checksum, *output;
+
+     checksum = calloc(1, sizeof(char));
+
+     if(pipe(pipe_fd) != -1) {
+          md5sum = fork();
+
+          switch (md5sum) {
+               case -1:
+                    write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
+                    break;
+               case 0:
+                    //Close the reading and the stdout pipe
+                    close(STDOUT_FILENO);
+                    close(pipe_fd[0]);
+
+                    //Redirect the stdout pipe to the writing pipe
+                    dup(pipe_fd[1]);
+
+                    //Calculate the md5sum
+                    execl("/usr/bin/md5sum","md5sum", filename, NULL);
+
+                    close(pipe_fd[1]);
+                    break;
+               default:
+                    //Close the writing pipe
+                    close(pipe_fd[1]);
+                    output = readLine(pipe_fd[0], ' ', &endOfFile);
+
+                    checksum = realloc(checksum, sizeof(char) * (strlen(output) + 1));
+                    strcpy(checksum, output);
+                    free(output);
+
+                    //Wait until the checksum is calculated
+                    wait(0);
+                    close(pipe_fd[0]);
+                    break;
+          }
+     }
+
+     return checksum;
+}
+
+int getFileSize(char *filename) {
+     int fd, compt = 0;
+     char aux;
+
+     fd = open(filename, O_RDONLY);
+
+     if (fd < 0) {
+         close(fd);
+         return -1;
+     } else {
+         while (read(fd, &aux, 1) > 0) compt++;
+     }
+
+     close(fd);
+     return compt;
 }

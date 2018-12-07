@@ -1,6 +1,6 @@
 /*******************************************************************
 *
-* @File: Files.h
+* @File: Exit.c
 * @Purpose: Handle the termination of McGruder
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
@@ -22,11 +22,12 @@ void closeMcGruder() {
 }
 
 void safeClose() {
-     char buff[100];
+     char *buff;
      int bytes = 0;
-     
-     bytes = sprintf(buff, DISCONNECTION_PATTERN, config.name);
+
+     bytes = asprintf(&buff, DISCONNECTION_PATTERN, config.name);
      write(1, buff, bytes);
+     free(buff);
 
      close(socket_fd);
      free(config.name);
