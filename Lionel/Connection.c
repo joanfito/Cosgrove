@@ -89,7 +89,7 @@ int connectMcGruder(int index) {
           strcpy(conn.mcgruder[index].telescope_name, data);
 
           //Send a connection ok frame
-          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, "[CONOK]", 0, NULL);
+          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, CONNECTION_OK_HEADER, 0, NULL);
           if (response == SOCKET_CONNECTION_KO) {
                free(header);
                free(data);
@@ -100,7 +100,7 @@ int connectMcGruder(int index) {
           write(1, buff, bytes);
      } else {
           //Send a connection ko frame
-          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, "[CONKO]", 0, NULL);
+          response = sendFrame(conn.mcgruder[index].fd, (char)CONNECTION_FRAME_TYPE, CONNECTION_KO_HEADER, 0, NULL);
           if (response == SOCKET_CONNECTION_KO) {
                free(header);
                free(data);
@@ -211,16 +211,23 @@ void *mcgruderListener(void *arg) {
                             file_type = receiveMetadata(data);
 
                             if (file_type != ERROR_TYPE) {
+                                //Save the index of the receiving file
+                                if (file_type == IMAGE_TYPE) {
+                                     conn.mcgruder[index].receivingFile = files.num_images - 1;
+                                } else if (file_type == ASTRONOMICAL_DATA_TYPE) {
+                                     conn.mcgruder[index].receivingFile = files.num_astronomical_data - 1;
+                                }
+
                                 //Lionel is ready to receive a file
                                 receiving_file = 1;
 
-                                response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, FILE_OK_HEADER, 0, NULL);
+                                response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
                                 if (response == SOCKET_CONNECTION_KO) {
                                     receiving_file = 0;
                                     disconnectMcGruder(index);
                                 }
                             } else {
-                                response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, FILE_KO_HEADER, 0, NULL);
+                                response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_KO_HEADER, 0, NULL);
                                 if (response == SOCKET_CONNECTION_KO) {
                                     disconnectMcGruder(index);
                                 }
@@ -229,38 +236,45 @@ void *mcgruderListener(void *arg) {
                     } else if (strcmp(header, EMPTY_HEADER) == 0) {
                         //We only process the frame if we are receiving a file
                         if (receiving_file == 1) {
-                            receiveFrame(length, file_type, data);
+                            receiveFrame(index, length, file_type, data);
                         }
 
                     } else if (strcmp(header, ENDFILE_HEADER) == 0) {
                         //We only process the checksum if we are receiving a file
-                        if (receiving_file == 1) {
+                        if (receiving_file == 1 && file_type == IMAGE_TYPE) {
                             checksum_ok = receiveChecksum(index, file_type, data);
                             receiving_file = 0;
 
                             if (checksum_ok == CHECKSUM_KO) {
-                                if (file_type == IMAGE_TYPE) {
-                                    Date date = files.images[files.num_images - 1].date;
-                                    Time time = files.images[files.num_images - 1].time;
+                                Date date = files.images[conn.mcgruder[index].receivingFile].date;
+                                Time time = files.images[conn.mcgruder[index].receivingFile].time;
 
-                                    asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
-                                    bytes = asprintf(&buff, FILE_RECEIVED_KO_MSG, buff);
+                                asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
+                                bytes = asprintf(&buff, FILE_RECEIVED_KO_MSG, buff);
 
-                                    removeLastImage(&files);
-                                } else if (file_type == ASTRONOMICAL_DATA_TYPE) {
-                                    Date date = files.astronomical_data[files.num_astronomical_data - 1].date;
-                                    Time time = files.astronomical_data[files.num_astronomical_data - 1].time;
+                                removeLastImage(&files);
 
-                                    asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
-                                    bytes = asprintf(&buff, FILE_RECEIVED_KO_MSG, buff);
-
-                                    removeLastAstronomicalData(&files);
-                                }
                                 write(1, buff, bytes);
                                 free(buff);
                             }
-                        }
+                       } else if (receiving_file == 1 && file_type == ASTRONOMICAL_DATA_TYPE) {
+                            receiving_file = 0;
 
+                            //The file will always been received successfully
+                            Date date = files.astronomical_data[conn.mcgruder[index].receivingFile].date;
+                            Time time = files.astronomical_data[conn.mcgruder[index].receivingFile].time;
+
+                            response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, FILE_OK_HEADER, 0, NULL);
+                            if (response == SOCKET_CONNECTION_KO) {
+                                 disconnectMcGruder(index);
+                            } else {
+                                 asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
+                                 bytes = asprintf(&buff, FILE_RECEIVED_OK_MSG, buff);
+
+                                 write(1, buff, bytes);
+                                 free(buff);
+                            }
+                       }
                     }
                     break;
           }
@@ -316,6 +330,7 @@ int receiveMetadata(char *data) {
          files.images[files.num_images].date = createDateFromName(file_name);
          files.images[files.num_images].time = createTimeFromName(file_name);
          files.images[files.num_images].size = atoi(file_size);
+         files.images[files.num_images].bytes_readed = 0;
          files.images[files.num_images].percentage = 0;
 
          //Assign memory for the next image
@@ -352,17 +367,39 @@ int receiveMetadata(char *data) {
      return type;
 }
 
-void receiveFrame(short length, int type, char *data) {
-    int file_fd;
+void receiveFrame(int index, short length, int type, char *data) {
+    int file_fd, response;
     char *name;
     Date date;
     Time time;
 
     if (type == IMAGE_TYPE) {
+        //Write the received data into the file
+        date = files.images[conn.mcgruder[index].receivingFile].date;
+        time = files.images[conn.mcgruder[index].receivingFile].time;
 
+        asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
+        asprintf(&name, FILES_PATH, name);
+        file_fd = open(name, O_WRONLY | O_APPEND);
+
+        if (file_fd >= 0) {
+            write(file_fd, data, length);
+            files.images[conn.mcgruder[index].receivingFile].bytes_readed += length;
+            printProgressbar(((float)files.images[conn.mcgruder[index].receivingFile].bytes_readed/(float)files.images[conn.mcgruder[index].receivingFile].size) * 100, &files.images[conn.mcgruder[index].receivingFile].percentage);
+            close(file_fd);
+        }
+
+        //Notify McGruder that Lionel is ready to receive another frame
+        response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
+        if (response == SOCKET_CONNECTION_KO) {
+            disconnectMcGruder(index);
+        }
+
+        free(name);
     } else if (type == ASTRONOMICAL_DATA_TYPE) {
-        date = files.astronomical_data[files.num_astronomical_data - 1].date;
-        time = files.astronomical_data[files.num_astronomical_data - 1].time;
+        //Write the received data into the file
+        date = files.astronomical_data[conn.mcgruder[index].receivingFile].date;
+        time = files.astronomical_data[conn.mcgruder[index].receivingFile].time;
 
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
         asprintf(&name, FILES_PATH, name);
@@ -385,13 +422,13 @@ int receiveChecksum(int index, int type, char *data) {
 
     //Get the file name from the date, time and the type
     if (type == IMAGE_TYPE) {
-        date = files.images[files.num_images - 1].date;
-        time = files.images[files.num_images - 1].time;
+        date = files.images[conn.mcgruder[index].receivingFile].date;
+        time = files.images[conn.mcgruder[index].receivingFile].time;
 
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
     } else {
-        date = files.astronomical_data[files.num_astronomical_data - 1].date;
-        time = files.astronomical_data[files.num_astronomical_data - 1].time;
+        date = files.astronomical_data[conn.mcgruder[index].receivingFile].date;
+        time = files.astronomical_data[conn.mcgruder[index].receivingFile].time;
 
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
     }

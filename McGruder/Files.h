@@ -29,12 +29,13 @@
 #define FILE_FOUND_PATTERN "File: %s\n"
 #define SEND_FILE_PATTERN "Sending %s....\n"
 #define FILE_SENT_MSG "File sent\n"
-#define FILE_NOT_SENT_MSG "File not sent successfully\n"
+#define FILE_NOT_SENT_MSG "\n\nFile not sent successfully\n"
 #define FILES_PATH "./files/%s"
 #define FILES_NAMES_PATH "./files/names"
 #define SCAN_ERROR_MSG "An error occurred while scaning the files\n"
-#define FRAME_SIZE 100
+#define FRAME_SIZE 1000
 #define METADATA_PATTERN "%s&%d&%s"
+#define PROGRESSBAR_PATTERN "\r\t [%s] %.2f%%"
 
 //Type definitions
 
@@ -121,6 +122,8 @@ char *calculateChecksum(char *filename);
 *
 ********************************************************************/
 int getFileSize(char *filename);
+
+void printProgressbar(float percentage, int *progress_completed);
 
 
 #endif

@@ -147,7 +147,7 @@ void removeLastAstronomicalData(Files *files) {
 
 int saveReceivedFiles(Files files) {
     int fd, i, bytes;
-    char *line;
+    char *line = NULL;
 
     fd = open(KALKUN_PATH, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return KALKUN_SAVED_KO;
@@ -155,7 +155,7 @@ int saveReceivedFiles(Files files) {
     //Save the images
     for (i = 0; i < files.num_images; i++) {
         //If the image has been received successfuly, we save it
-        if (files.images[i].percentage == 100) {
+        if (files.images[i].bytes_readed == files.images[i].size) {
             bytes = asprintf(&line, KALKUN_LINE_PATTERN, getFormattedDate(files.images[i].date), getFormattedTime(files.images[i].time), files.images[i].size);
             write(fd, line, bytes);
         }
@@ -167,6 +167,33 @@ int saveReceivedFiles(Files files) {
         write(fd, line, bytes);
     }
 
-    free(line);
+    if (line != NULL) {
+         free(line);
+    }
+    
     return KALKUN_SAVED_OK;
+}
+
+void printProgressbar(float percentage, int *progress_completed) {
+     char *bar;
+     unsigned char current_progress[11];
+     int bytes, i;
+
+     //If its a multiple of 10, we increase the progressbar
+     if ((int)percentage % 10 == 0) {
+          *progress_completed = (int)percentage / 10;
+     }
+
+     for (i = 0; i < *progress_completed; i++) {
+          current_progress[i] = '#';
+     }
+
+     for (i = *progress_completed; i < 10; i++) {
+          current_progress[i] = ' ';
+     }
+     current_progress[i] = '\0';
+
+     bytes = asprintf(&bar, PROGRESSBAR_PATTERN, current_progress, percentage);
+     write(1, bar, bytes);
+     free(bar);
 }

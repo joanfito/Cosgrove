@@ -27,7 +27,6 @@
 #define _GNU_SOURCE 1
 #endif
 
-#define FRAME_SIZE 100
 #define FILE_NAME_PATTERN "%.4d%.2d%.2d-%.2d%.2d%.2d.%s"
 #define FILES_PATH "./files/%s"
 #define KALKUN_PATH "./files/Kalkun.txt"
@@ -36,12 +35,14 @@
 #define FILE_CREATED_KO 2
 #define KALKUN_SAVED_OK 3
 #define KALKUN_SAVED_KO 4
+#define PROGRESSBAR_PATTERN "\r\t [%s] %.2f%%"
 
 //Type definitions
 typedef struct {
      Date date;
      Time time;
      int size;
+     int bytes_readed;
      int percentage;
 } Image;
 
@@ -172,5 +173,6 @@ void removeLastAstronomicalData(Files *files);
 ********************************************************************/
 int saveReceivedFiles(Files files);
 
+void printProgressbar(float percentage, int *progress_completed);
 
 #endif

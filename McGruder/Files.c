@@ -174,7 +174,7 @@ int sendImage(char *filename, int socket_fd) {
           safeClose();
      }
 
-     if (strcmp(header, FILE_OK_HEADER) != 0) {
+     if (strcmp(header, SEND_OK_HEADER) != 0) {
          free(fullname);
          free(header);
          free(data);
@@ -184,7 +184,44 @@ int sendImage(char *filename, int socket_fd) {
      frame = calloc(1, sizeof(char) * FRAME_SIZE);
 
      //TODO Decompose the image into smaller frames and sent it
+     int i, num_trames, bytes_readed = 0, current_frame_size, progress_completed = 0;
+     num_trames = (size / FRAME_SIZE) + (size % FRAME_SIZE == 0 ? 0 : 1);
 
+     write(1, "\n", 1);
+
+     for (i = 0; i < num_trames; i++) {
+          current_frame_size = FRAME_SIZE;
+
+          //Check if there are FRAME_SIZE bytes to read
+          if (size - bytes_readed < FRAME_SIZE) {
+               current_frame_size = size - bytes_readed;
+          }
+
+          //Read FRAME_SIZE bytes
+          read(fd, frame, current_frame_size);
+
+          //Send the frame
+          frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, EMPTY_HEADER, (short)current_frame_size, frame);
+          if (frame_ok == SOCKET_CONNECTION_KO) {
+               free(frame);
+               safeClose();
+          }
+
+          //Wait until lionel is ready the receive another frame
+          frame_ok = readFrame(socket_fd, &type, &header, &length, &data);
+          if (frame_ok == SOCKET_CONNECTION_KO) {
+               free(frame);
+               safeClose();
+          }
+
+          if (strcmp(header, SEND_OK_HEADER) != 0) {
+              break;
+          }
+
+          bytes_readed += current_frame_size;
+          printProgressbar(((float)bytes_readed/(float)size) * 100, &progress_completed);
+     }
+     write(1, "\n\n", 2);
      free(frame);
 
      //Send the checksum
@@ -227,7 +264,7 @@ int sendImage(char *filename, int socket_fd) {
 
 int sendAstronomicalData(char *filename, int socket_fd) {
      int bytes, size, response, frame_ok, fd;
-     char *buff, *fullname, *metadata, *frame, *checksum;
+     char *buff, *fullname, *metadata, *frame;
      char *header, *data, type;
      short length;
 
@@ -244,15 +281,6 @@ int sendAstronomicalData(char *filename, int socket_fd) {
      write(1, buff, bytes);
      free(buff);
 
-     //Calculate the image checksum
-     checksum = calculateChecksum(fullname);
-
-     if (strlen(checksum) < 1) {
-          free(fullname);
-          free(checksum);
-          return SEND_IMAGE_KO;
-     }
-
      //Get the image length
      size = getFileSize(fullname);
 
@@ -265,7 +293,6 @@ int sendAstronomicalData(char *filename, int socket_fd) {
      if (frame_ok == SOCKET_CONNECTION_KO) {
           free(fullname);
           free(metadata);
-          free(checksum);
           safeClose();
      }
 
@@ -280,7 +307,7 @@ int sendAstronomicalData(char *filename, int socket_fd) {
           safeClose();
      }
 
-     if (strcmp(header, FILE_OK_HEADER) != 0) {
+     if (strcmp(header, SEND_OK_HEADER) != 0) {
          free(fullname);
          free(header);
          free(data);
@@ -294,20 +321,17 @@ int sendAstronomicalData(char *filename, int socket_fd) {
      frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, EMPTY_HEADER, (short)strlen(frame), frame);
      if (frame_ok == SOCKET_CONNECTION_KO) {
           free(fullname);
-          free(checksum);
           safeClose();
      }
 
      free(frame);
 
-     //Send the checksum
-     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, (short)strlen(checksum), checksum);
+     //Send the enfile frame
+     frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, 0, NULL);
      if (frame_ok == SOCKET_CONNECTION_KO) {
           free(fullname);
-          free(checksum);
           safeClose();
      }
-     free(checksum);
 
      //Lionel response
      response = readFrame(socket_fd, &type, &header, &length, &data);
@@ -318,7 +342,7 @@ int sendAstronomicalData(char *filename, int socket_fd) {
           safeClose();
      }
 
-     if (strcmp(header, CHECK_OK_HEADER) != 0) {
+     if (strcmp(header, FILE_OK_HEADER) != 0) {
          write(1, FILE_NOT_SENT_MSG, strlen(FILE_NOT_SENT_MSG));
 
          free(fullname);
@@ -416,4 +440,28 @@ int getFileSize(char *filename) {
 
      close(fd);
      return compt;
+}
+
+void printProgressbar(float percentage, int *progress_completed) {
+     char *bar;
+     unsigned char current_progress[11];
+     int bytes, i;
+
+     //If its a multiple of 10, we increase the progressbar
+     if ((int)percentage % 10 == 0) {
+          *progress_completed = (int)percentage / 10;
+     }
+
+     for (i = 0; i < *progress_completed; i++) {
+          current_progress[i] = '#';
+     }
+
+     for (i = *progress_completed; i < 10; i++) {
+          current_progress[i] = ' ';
+     }
+     current_progress[i] = '\0';
+
+     bytes = asprintf(&bar, PROGRESSBAR_PATTERN, current_progress, percentage);
+     write(1, bar, bytes);
+     free(bar);
 }

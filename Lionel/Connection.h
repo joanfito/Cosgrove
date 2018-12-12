@@ -29,8 +29,8 @@
 
 #define FRAME_TYPE_SIZE 1
 #define FRAME_LENGTH_SIZE 2
-#define CONNECTION_MCGRUDER_PATTERN "Connection Lionel - %s ready.\n"
-#define DISCONNECTION_MCGRUDER_PATTERN "Disconnecting from %s.\n"
+#define CONNECTION_MCGRUDER_PATTERN "\nConnection Lionel - %s ready.\n"
+#define DISCONNECTION_MCGRUDER_PATTERN "\nDisconnecting from %s.\n"
 #define SOCKET_CONNECTION_FAILED -1
 #define MC_GRUDER_ACCEPT_FAILED -2
 #define CONNECT_MCGRUDER_OK 1
@@ -56,17 +56,20 @@
 #define FILE_KO_HEADER "[FILEKO]"
 #define CHECK_OK_HEADER "[CHECKOK]"
 #define CHECK_KO_HEADER "[CHECKKO]"
+#define SEND_OK_HEADER "[SENDOK]"
+#define SEND_KO_HEADER "[SENDKO]"
 #define METADATA_HEADER "[METADATA]"
 #define ENDFILE_HEADER "[ENDFILE]"
-#define RECEIVING_FILE_MSG "Receiving %s ...\n"
-#define FILE_RECEIVED_OK_MSG "File %s received.\n"
-#define FILE_RECEIVED_KO_MSG "Something failed while receiving %s.\n"
+#define RECEIVING_FILE_MSG "\nReceiving %s ...\n"
+#define FILE_RECEIVED_OK_MSG "\nFile %s received.\n"
+#define FILE_RECEIVED_KO_MSG "\nSomething failed while receiving %s.\n"
 
 
 //Type definitions
 typedef struct {
      char *telescope_name;
      int fd;
+     int receivingFile;
 } McGruder;
 
 typedef struct {
@@ -209,12 +212,13 @@ int receiveMetadata(char *data);
 * @Name: receiveFrame
 * @Purpose: Process a data frame
 * @Arguments: index (in) = mcgruder index
+*             length (in) = frame length
 *             type (in) = IMAGE_TYPE or ASTRONOMICAL_DATA_TYPE
 *             data (in) = data of the endfile frame
 * @Return: --
 *
 ********************************************************************/
-void receiveFrame(short length, int type, char *data);
+void receiveFrame(int index, short length, int type, char *data);
 
 /*******************************************************************
 *
