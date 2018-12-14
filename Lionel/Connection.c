@@ -12,15 +12,19 @@
 
 extern Connection conn;
 extern Files files;
+extern int id_received_data, id_last_data;
 
 Connection createConnection() {
      Connection new;
 
-     new.socket_fd = 0;
+     new.mcgruder_fd = 0;
+     new.mctavish_fd = 0;
      new.mcgruder = (McGruder*)calloc(1, sizeof(McGruder));
      new.mctavish = (McTavish*)calloc(1, sizeof(McTavish));
      new.num_mcgruder_processes = 0;
      new.num_mctavish_processes = 0;
+
+     initPaquita();
 
      return new;
 }
@@ -136,6 +140,119 @@ int disconnectMcGruder(int index) {
      free(conn.mcgruder[index].telescope_name);
 
      return DISCONNECT_MCGRUDER_OK;
+}
+
+int createSocketForMcTavish(Configuration config) {
+     int socket_fd = 0;
+     struct sockaddr_in lionel;
+
+     //Get a IPv4 & TCP socket file descriptor
+     socket_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+     if (socket_fd < 0) {
+          return SOCKET_CONNECTION_FAILED;
+     }
+
+     //Configure the server
+     lionel.sin_family = AF_INET;
+     lionel.sin_addr.s_addr = INADDR_ANY;
+     lionel.sin_port = htons(config.mctavish_port);
+
+     if (bind(socket_fd, (struct sockaddr *)&lionel, sizeof(lionel)) < 0) {
+          close(socket_fd);
+          return SOCKET_CONNECTION_FAILED;
+     }
+
+     //Listen the port
+     if (listen(socket_fd, 5) < 0) {
+          close(socket_fd);
+          return SOCKET_CONNECTION_FAILED;
+     }
+
+     return socket_fd;
+}
+
+int acceptMcTavish(int socket_fd) {
+    struct sockaddr_in mctavish;
+    int mctavish_fd;
+    socklen_t mctavish_len;
+
+    //Accept the new connection
+    mctavish_len = sizeof(mctavish);
+    mctavish_fd = accept(socket_fd, (struct sockaddr *)&mctavish, &mctavish_len);
+
+    if (mctavish_fd < 0) {
+        return MC_TAVISH_ACCEPT_FAILED;
+    }
+
+    return mctavish_fd;
+}
+
+int connectMcTavish(int index) {
+    char buff[100];
+    char type, *header, *data;
+    short length;
+    int response, bytes = 0;
+
+    //Read the frame
+    response = readFrame(conn.mctavish[index].fd, &type, &header, &length, &data);
+    if (response == SOCKET_CONNECTION_KO) {
+        free(header);
+        free(data);
+        return CONNECT_MCTAVISH_KO;
+    }
+
+    if (type == (char)CONNECTION_FRAME_TYPE) {
+        conn.mctavish[index].scientist_name = malloc(sizeof(char) * (strlen(data) + 1));
+        strcpy(conn.mctavish[index].scientist_name, data);
+
+        //Send a connection ok frame
+        response = sendFrame(conn.mctavish[index].fd, (char)CONNECTION_FRAME_TYPE, CONNECTION_OK_HEADER, 0, NULL);
+        if (response == SOCKET_CONNECTION_KO) {
+            free(header);
+            free(data);
+            return CONNECT_MCTAVISH_KO;
+        }
+
+        bytes = sprintf(buff, CONNECTION_MCTAVISH_PATTERN, conn.mctavish[index].scientist_name);
+        write(1, buff, bytes);
+    } else {
+        //Send a connection ko frame
+        response = sendFrame(conn.mctavish[index].fd, (char)CONNECTION_FRAME_TYPE, CONNECTION_KO_HEADER, 0, NULL);
+        if (response == SOCKET_CONNECTION_KO) {
+            free(header);
+            free(data);
+            return CONNECT_MCTAVISH_KO;
+        }
+    }
+
+    free(header);
+    free(data);
+
+    //Throw a new thread to listen the mcgruder process
+    pthread_t thread_mctavish;
+
+    response = pthread_create(&thread_mctavish, NULL, mctavishListener, &index);
+    if (response != 0) return CONNECT_MCTAVISH_KO;
+
+    return CONNECT_MCTAVISH_OK;
+}
+
+int disconnectMcTavish(int index) {
+     char *buff;
+     int bytes = 0;
+
+     //Send a connection ok frame
+     sendFrame(conn.mctavish[index].fd, (char)DISCONNECTION_FRAME_TYPE, CONNECTION_OK_HEADER, 0, NULL);
+
+     bytes = asprintf(&buff, DISCONNECTION_MCGRUDER_PATTERN, conn.mctavish[index].scientist_name);
+     write(1, buff, bytes);
+     free(buff);
+
+     close(conn.mctavish[index].fd);
+     conn.mctavish[index].fd = SOCKET_CONNECTION_FAILED;
+     free(conn.mctavish[index].scientist_name);
+
+     return DISCONNECT_MCTAVISH_OK;
 }
 
 int sendFrame(int socket_fd, char type, char *header, short length, char *data) {
@@ -286,6 +403,86 @@ void *mcgruderListener(void *arg) {
      return (void *) arg;
 }
 
+void *mctavishListener(void *arg) {
+    char type, *header, *data;
+    short length;
+    int response, end = 0;
+    ReceivedData *shared_received_data;
+    ReceivedAstronomicalData *shared_last_data;
+    char *send_data;
+    float avg_const = 0, avg_density = 0;
+
+    int index = *((int*)arg);
+
+    while (!end) {
+
+        //Read a frame
+        response = readFrame(conn.mctavish[index].fd, &type, &header, &length, &data);
+
+        if (response == SOCKET_CONNECTION_KO) {
+            //If the socket is down, we can disconnect the mcgruder process
+            disconnectMcTavish(index);
+            end = 1;
+        }
+
+        switch (type) {
+            case (char)DISCONNECTION_FRAME_TYPE:
+                disconnectMcTavish(index);
+                end = 1;
+                break;
+            case (char)RECEIVED_DATA_FRAME_TYPE:
+                //TODO semafors
+                //Get the data from Paquita
+                shared_received_data = shmat(id_received_data, NULL, 0);
+                avg_const = 0;
+
+                if (shared_received_data->count_astronomical_data > 0) {
+                    avg_const = (float)shared_received_data->acum_constellations / (float)shared_received_data->count_astronomical_data;
+                }
+
+                asprintf(&send_data, RECEIVED_DATA_PATTERN, shared_received_data->count_images, shared_received_data->images_size_kb, shared_received_data->count_astronomical_data, avg_const);
+
+                //Unlink from the shared memory reion
+                shmdt(shared_received_data);
+
+                response = sendFrame(conn.mctavish[index].fd, (char)RECEIVED_DATA_FRAME_TYPE, EMPTY_HEADER, (short)strlen(send_data), send_data);
+                free(send_data);
+
+                if (response == SOCKET_CONNECTION_KO) {
+                    disconnectMcTavish(index);
+                }
+                break;
+            case (char)LAST_DATA_FRAME_TYPE:
+                //TODO semafors
+                //Get the data from Paquita
+                shared_last_data = shmat(id_last_data, NULL, 0);
+                avg_density = 0;
+
+                if (shared_last_data->count_constellations > 0) {
+                    avg_density = (float)shared_last_data->acum_density/(float)shared_last_data->count_constellations;
+                }
+
+                asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->min_size, shared_last_data->max_size);
+
+                //Unlink from the shared memory reion
+                shmdt(shared_last_data);
+
+                response = sendFrame(conn.mctavish[index].fd, (char)LAST_DATA_FRAME_TYPE, EMPTY_HEADER, strlen(send_data), send_data);
+                free(send_data);
+
+                if (response == SOCKET_CONNECTION_KO) {
+                    disconnectMcTavish(index);
+                }
+                break;
+        }
+    }
+
+    free(header);
+    free(data);
+
+    return (void *) arg;
+}
+
 int receiveMetadata(char *data) {
      int i = 0, j, type = ERROR_TYPE, bytes;
      char *file_type, *file_size, *file_name, *buff;
@@ -298,7 +495,7 @@ int receiveMetadata(char *data) {
      j = 0;
      while (data[i] != '&') {
           file_type[j++] = data[i];
-          file_type = realloc(file_type, sizeof(char) * j);
+          file_type = realloc(file_type, sizeof(char) * (j + 1));
           i++;
      }
      file_type[j] = '\0';
@@ -308,7 +505,7 @@ int receiveMetadata(char *data) {
      j = 0;
      while (data[i] != '&') {
           file_size[j++] = data[i];
-          file_size = realloc(file_size, sizeof(char) * j);
+          file_size = realloc(file_size, sizeof(char) * (j + 1));
           i++;
      }
      file_size[j] = '\0';
@@ -318,7 +515,7 @@ int receiveMetadata(char *data) {
      j = 0;
      while (data[i] != '\0') {
           file_name[j++] = data[i];
-          file_name = realloc(file_name, sizeof(char) * j);
+          file_name = realloc(file_name, sizeof(char) * (j + 1));
           i++;
      }
      file_name[j] = '\0';

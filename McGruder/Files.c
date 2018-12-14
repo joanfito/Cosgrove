@@ -47,11 +47,12 @@ void scanDirectory(int socket_fd) {
                              write(1, buff, bytes);
                              free(buff);
                              file_found = 1;
+                             free(output);
                              break;
                         }
+                        free(output);
                    }
                    close(fd);
-                   free(output);
 
                    if (!file_found) {
                        write(1, FILES_NOT_FOUND_MSG, strlen(FILES_NOT_FOUND_MSG));
@@ -71,7 +72,7 @@ void scanDirectory(int socket_fd) {
 
 int isImage(char *filename) {
      int i = 0, j = 0;
-     char type[4];
+     char type[4] = { 0 };
 
      //Read the name
      while (filename[i] != '.' && filename[i] != '\0') {
@@ -97,7 +98,7 @@ int isImage(char *filename) {
 
 int isAstronomicalData(char *filename) {
      int i = 0, j = 0;
-     char type[4];
+     char type[4] = { 0 };
 
      //Read the name
      while (filename[i] != '.' && filename[i] != '\0') {
@@ -105,7 +106,7 @@ int isAstronomicalData(char *filename) {
      }
 
      //The name has a dot
-     if (filename[i] != '\0') {
+     if (filename[i] == '.') {
           //Skip the dot
           i++;
 
@@ -181,6 +182,9 @@ int sendImage(char *filename, int socket_fd) {
          return SEND_TXT_KO;
      }
 
+     free(header);
+     free(data);
+
      frame = calloc(1, sizeof(char) * FRAME_SIZE);
 
      //TODO Decompose the image into smaller frames and sent it
@@ -210,13 +214,20 @@ int sendImage(char *filename, int socket_fd) {
           //Wait until lionel is ready the receive another frame
           frame_ok = readFrame(socket_fd, &type, &header, &length, &data);
           if (frame_ok == SOCKET_CONNECTION_KO) {
+               free(header);
+               free(data);
                free(frame);
                safeClose();
           }
 
           if (strcmp(header, SEND_OK_HEADER) != 0) {
+              free(header);
+              free(data);
               break;
           }
+
+          free(header);
+          free(data);
 
           bytes_readed += current_frame_size;
           printProgressbar(((float)bytes_readed/(float)size) * 100, &progress_completed);
@@ -313,6 +324,9 @@ int sendAstronomicalData(char *filename, int socket_fd) {
          free(data);
          return SEND_TXT_KO;
      }
+
+     free(header);
+     free(data);
 
      frame = calloc(1, sizeof(char) * (size + 1));
      read(fd, frame, size);

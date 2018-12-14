@@ -1,10 +1,10 @@
 /*******************************************************************
 *
 * @File: Exit.h
-* @Purpose: Handle the termination of McGruder
+* @Purpose: Handle the termination of McTavish
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
-* @Date: 27/10/2018
+* @Date: 13/12/2018
 *
 ********************************************************************/
 
@@ -15,20 +15,18 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
-#include <sys/shm.h>
-#include <sys/ipc.h>
-#include "Paquita.h"
 #include "Connection.h"
+#include "Configuration.h"
 
 //Constants
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
 
-#define SHUT_DOWN_MSG "\nShutting down Lionel.\n"
 #define DISCONNECTION_PATTERN "\nDisconnecting %s.\n"
-#define SHUT_DOWN_ERROR_MSG "Something failed during the shut down. Try again.\n"
+#define DISCONNECTION_ERROR_MSG "Something failed during the disconnection. Try again.\n"
 
 //Type definitions
 
@@ -36,18 +34,18 @@
 
 /*******************************************************************
 *
-* @Name: closeMcGruder
-* @Purpose: Close safely Lionel
+* @Name: closeMcTavish
+* @Purpose: Close safely McTavish
 * @Arguments: --
 * @Return: --
 *
 ********************************************************************/
-void closeLionel();
+void closeMcTavish();
 
 /*******************************************************************
 *
 * @Name: safeClose
-* @Purpose: Close the resources used by Lionel
+* @Purpose: Close the resources used by McTavish
 * @Arguments: --
 * @Return: --
 *

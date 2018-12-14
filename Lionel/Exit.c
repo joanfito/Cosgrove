@@ -13,6 +13,7 @@
 extern Connection conn;
 extern Configuration config;
 extern Files files;
+extern int id_received_data, id_last_data;
 
 void closeLionel() {
      write(1, SHUT_DOWN_MSG, strlen(SHUT_DOWN_MSG));
@@ -35,10 +36,14 @@ void safeClose() {
 
          //Close the mctavishes
          for (i = 0; i < conn.num_mctavish_processes; i++) {
-              close(conn.mctavish[i].fd);
+              if (conn.mctavish[i].fd != SOCKET_CONNECTION_FAILED) {
+                   disconnectMcTavish(i);
+                   free(conn.mctavish[i].scientist_name);
+              }
          }
 
-         close(conn.socket_fd);
+         close(conn.mcgruder_fd);
+         close(conn.mctavish_fd);
 
          //Free the memory
          free(conn.mcgruder);
@@ -46,6 +51,12 @@ void safeClose() {
          free(config.ip);
          free(files.images);
          free(files.astronomical_data);
+
+         //Erease the shared memory regions
+         shmctl(id_received_data, IPC_RMID, NULL);
+         shmctl(id_last_data, IPC_RMID, NULL);
+
+         //Destroy the semaphores
 
          exit(0);
      } else {

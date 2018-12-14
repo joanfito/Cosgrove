@@ -18,9 +18,12 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
 #include "Configuration.h"
 #include "Reader.h"
 #include "Files.h"
+#include "Paquita.h"
 
 //Constants
 #ifndef _GNU_SOURCE
@@ -30,9 +33,11 @@
 #define FRAME_TYPE_SIZE 1
 #define FRAME_LENGTH_SIZE 2
 #define CONNECTION_MCGRUDER_PATTERN "\nConnection Lionel - %s ready.\n"
+#define CONNECTION_MCTAVISH_PATTERN "\n%s has accessed Lionel.\n"
 #define DISCONNECTION_MCGRUDER_PATTERN "\nDisconnecting from %s.\n"
 #define SOCKET_CONNECTION_FAILED -1
 #define MC_GRUDER_ACCEPT_FAILED -2
+#define MC_TAVISH_ACCEPT_FAILED -3
 #define CONNECT_MCGRUDER_OK 1
 #define CONNECT_MCGRUDER_KO 2
 #define DISCONNECT_MCGRUDER_OK 3
@@ -46,9 +51,15 @@
 #define IMAGE_TYPE 14
 #define ASTRONOMICAL_DATA_TYPE 15
 #define ERROR_TYPE 16
+#define CONNECT_MCTAVISH_OK 17
+#define CONNECT_MCTAVISH_KO 18
+#define DISCONNECT_MCTAVISH_OK 19
+#define DISCONNECT_MCTAVISH_KO 20
 #define CONNECTION_FRAME_TYPE 0x01
 #define DISCONNECTION_FRAME_TYPE 0x02
 #define FILE_FRAME_TYPE 0x03
+#define RECEIVED_DATA_FRAME_TYPE 0x04
+#define LAST_DATA_FRAME_TYPE 0x05
 #define EMPTY_HEADER "[]"
 #define CONNECTION_OK_HEADER "[CONOK]"
 #define CONNECTION_KO_HEADER "[CONKO]"
@@ -63,6 +74,8 @@
 #define RECEIVING_FILE_MSG "\nReceiving %s ...\n"
 #define FILE_RECEIVED_OK_MSG "\nFile %s received.\n"
 #define FILE_RECEIVED_KO_MSG "\nSomething failed while receiving %s.\n"
+#define RECEIVED_DATA_PATTERN "%d&%d&%d&%.2f"
+#define LAST_DATA_PATTERN "%d&%.2f&%d&%.2d"
 
 
 //Type definitions
@@ -78,7 +91,8 @@ typedef struct {
 } McTavish;
 
 typedef struct {
-     int socket_fd;
+     int mcgruder_fd;
+     int mctavish_fd;
      McGruder *mcgruder;
      McTavish *mctavish;
      int num_mcgruder_processes;
@@ -158,6 +172,65 @@ int disconnectMcGruder(int index);
 
 /*******************************************************************
 *
+* @Name: createSocketForMcTavish
+* @Purpose: Creates the socket for the connection with McTavish
+* @Arguments: config (in) = Configuration object of Lionel
+* @Return: the socket file descriptor, if the creation is okay,
+*          otherwise, SOCKET_CONNECTION_FAIL
+*
+********************************************************************/
+int createSocketForMcTavish(Configuration config);
+
+/*******************************************************************
+*
+* @Name: acceptMcTavish
+* @Purpose: Listen the socket in order to connect with McTavish
+* @Arguments: socket_fd (in) = socket file descriptor
+* @Return: the mctavish file descriptor, if the connection is okay,
+*          otherwise, MC_TAVISH_ACCEPT_FAILED
+*
+********************************************************************/
+int acceptMcTavish(int socket_fd);
+
+/*******************************************************************
+*
+* @Name: connectMcTavish
+* @Purpose: Connects a McTavish process and gets its name
+*           The McGruder sends the following connection frame:
+*                   Type (1 byte): 0x01
+*                   Header (2 bytes): []
+*                   Length (2 bytes): length of telescope name
+*                   Data (<length> bytes): scientist name
+*           Lionel answer with:
+*                   Type (1 byte): 0x01
+*                   Header (2 bytes): [CONOK/CONKO]
+*                   Length (2 bytes): 0
+*                   Data (0 bytes): --
+* @Arguments: index (in) = mctavish process index
+* @Return: CONNECT_MCTAVISH_OK, if the connection is okay,
+*          otherwise, CONNECT_MCTAVISH_KO
+*
+********************************************************************/
+int connectMcTavish(int index);
+
+/*******************************************************************
+*
+* @Name: disconnectMcTavish
+* @Purpose: Disconnect a McTavish process
+*           Lionel sends the following frame:
+*                   Type (1 byte): 0x02
+*                   Header (2 bytes): [CONOK/CONKO]
+*                   Length (2 bytes): 0
+*                   Data (0 bytes): --
+* @Arguments: index (in) = mctavish process index
+* @Return: DISCONNECT_MCTAVISH_OK, if the disconnection is okay,
+*          otherwise, DISCONNECT_MCTAVISH_KO
+*
+********************************************************************/
+int disconnectMcTavish(int index);
+
+/*******************************************************************
+*
 * @Name: sendFrame
 * @Purpose: Send a frame to Lionel
 * @Arguments: socket_fd (in) = socket file descriptor
@@ -195,6 +268,16 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 *
 ********************************************************************/
 void *mcgruderListener(void *arg);
+
+/*******************************************************************
+*
+* @Name: mctavishListener
+* @Purpose: Listens the socket of the mctavish process
+* @Arguments: arg (in) = index
+* @Return: arg
+*
+********************************************************************/
+void *mctavishListener(void *arg);
 
 /*******************************************************************
 *

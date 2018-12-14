@@ -4,7 +4,7 @@
 * @Purpose: Process the configuration file
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
-* @Date: 27/10/2018
+* @Date: 13/12/2018
 *
 ********************************************************************/
 
@@ -26,22 +26,19 @@ Configuration readConfiguration(char *filename) {
     while (!endOfFile) {
          output = readLine(fd, '\n', &endOfFile);
 
-         //If the file has more than 4 lines, we ignore them
+         //If the file has more than 3 lines, we ignore them
          switch (line_counter) {
               case 0:
                     config.name = malloc(sizeof(char) * (strlen(output) + 1));
                     strcpy(config.name, output);
                     break;
               case 1:
-                    config.search_time = atoi(output);
-                    break;
-              case 2:
                     config.ip = malloc(sizeof(char) * (strlen(output) + 1));
                     strcpy(config.ip, output);
 
                     config.is_ip = isIp(config.ip);
                     break;
-              case 3:
+              case 2:
                     config.port = atoi(output);
                     break;
          }
@@ -56,7 +53,6 @@ Configuration readConfiguration(char *filename) {
 Configuration configError() {
      Configuration error;
      error.name = "ERROR";
-     error.search_time = CONFIG_ERROR;
      error.ip = "0.0.0.0";
      error.is_ip = CONFIG_ERROR;
      error.port = CONFIG_ERROR;
@@ -72,11 +68,7 @@ void printConfig(Configuration config) {
      int bytes;
 
      write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
-     bytes = asprintf(&buff, "\t-> Name: %s\n", config.name);
-     write(1, buff, bytes);
-     free(buff);
-
-     bytes = asprintf(&buff, "\t-> Search time: %d\n", config.search_time);
+     bytes = asprintf(&buff, "\t-> Scientist name: %s\n", config.name);
      write(1, buff, bytes);
      free(buff);
 
