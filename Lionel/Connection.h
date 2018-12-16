@@ -35,6 +35,10 @@
 #define CONNECTION_MCGRUDER_PATTERN "\nConnection Lionel - %s ready.\n"
 #define CONNECTION_MCTAVISH_PATTERN "\n%s has accessed Lionel.\n"
 #define DISCONNECTION_MCGRUDER_PATTERN "\nDisconnecting from %s.\n"
+#define WAITING_MCGRUDER_MSG "Waiting for a McGruder client...\n"
+#define WAITING_MCTAVISH_MSG "Waiting for a McTavish client...\n"
+#define CONNECTION_MCGRUDER_ERROR_MSG "Something failed during the connection with McGruder.\n"
+#define CONNECTION_MCTAVISH_ERROR_MSG "Something failed during the connection with McTavish.\n"
 #define SOCKET_CONNECTION_FAILED -1
 #define MC_GRUDER_ACCEPT_FAILED -2
 #define MC_TAVISH_ACCEPT_FAILED -3
@@ -48,9 +52,6 @@
 #define FILE_RECEIVED_KO 11
 #define CHECKSUM_OK 12
 #define CHECKSUM_KO 13
-#define IMAGE_TYPE 14
-#define ASTRONOMICAL_DATA_TYPE 15
-#define ERROR_TYPE 16
 #define CONNECT_MCTAVISH_OK 17
 #define CONNECT_MCTAVISH_KO 18
 #define DISCONNECT_MCTAVISH_OK 19
@@ -74,13 +75,14 @@
 #define RECEIVING_FILE_MSG "\nReceiving %s ...\n"
 #define FILE_RECEIVED_OK_MSG "\nFile %s received.\n"
 #define FILE_RECEIVED_KO_MSG "\nSomething failed while receiving %s.\n"
-#define RECEIVED_DATA_PATTERN "%d&%d&%d&%.2f"
-#define LAST_DATA_PATTERN "%d&%.2f&%d&%.2d"
+#define RECEIVED_DATA_PATTERN "%d&%.2f&%d&%.2f"
+#define LAST_DATA_PATTERN "%d&%.2f&%.2f&%.2f"
 
 
 //Type definitions
 typedef struct {
      char *telescope_name;
+     pthread_t id_thread;
      int fd;
      int receivingFile;
 } McGruder;
@@ -88,6 +90,7 @@ typedef struct {
 typedef struct {
      char *scientist_name;
      int fd;
+     pthread_t id_thread;
 } McTavish;
 
 typedef struct {
@@ -315,5 +318,27 @@ void receiveFrame(int index, short length, int type, char *data);
 *
 ********************************************************************/
 int receiveChecksum(int index, int type, char *data);
+
+/*******************************************************************
+*
+* @Name: mcgruderServer
+* @Purpose: Listens the McGruder socket in order to connect
+*           new McGruder clients
+* @Arguments: arg (in) = --
+* @Return: arg
+*
+********************************************************************/
+void *mcgruderServer(void *arg);
+
+/*******************************************************************
+*
+* @Name: mctavishServer
+* @Purpose: Listens the McTavish socket in order to connect
+*           new McTavish clients
+* @Arguments: arg (in) = --
+* @Return: arg
+*
+********************************************************************/
+void *mctavishServer(void *arg);
 
 #endif

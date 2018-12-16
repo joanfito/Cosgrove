@@ -12,7 +12,8 @@
 
 extern Connection conn;
 extern Files files;
-extern int id_received_data, id_last_data;
+extern int id_received_data, id_last_data, id_last_file;
+extern semaphore sem_sync_paquita, sem_file, sem_received;
 
 Connection createConnection() {
      Connection new;
@@ -23,8 +24,6 @@ Connection createConnection() {
      new.mctavish = (McTavish*)calloc(1, sizeof(McTavish));
      new.num_mcgruder_processes = 0;
      new.num_mctavish_processes = 0;
-
-     initPaquita();
 
      return new;
 }
@@ -116,9 +115,7 @@ int connectMcGruder(int index) {
      free(data);
 
      //Throw a new thread to listen the mcgruder process
-     pthread_t thread_mcgruder;
-
-     response = pthread_create(&thread_mcgruder, NULL, mcgruderListener, &index);
+     response = pthread_create(&conn.mcgruder[index].id_thread, NULL, mcgruderListener, &index);
      if (response != 0) return CONNECT_MCGRUDER_KO;
 
      return CONNECT_MCGRUDER_OK;
@@ -138,6 +135,9 @@ int disconnectMcGruder(int index) {
      close(conn.mcgruder[index].fd);
      conn.mcgruder[index].fd = SOCKET_CONNECTION_FAILED;
      free(conn.mcgruder[index].telescope_name);
+
+     //Wait until the thread ends
+     pthread_detach(conn.mcgruder[index].id_thread);
 
      return DISCONNECT_MCGRUDER_OK;
 }
@@ -229,9 +229,7 @@ int connectMcTavish(int index) {
     free(data);
 
     //Throw a new thread to listen the mcgruder process
-    pthread_t thread_mctavish;
-
-    response = pthread_create(&thread_mctavish, NULL, mctavishListener, &index);
+    response = pthread_create(&conn.mctavish[index].id_thread, NULL, mctavishListener, &index);
     if (response != 0) return CONNECT_MCTAVISH_KO;
 
     return CONNECT_MCTAVISH_OK;
@@ -251,6 +249,9 @@ int disconnectMcTavish(int index) {
      close(conn.mctavish[index].fd);
      conn.mctavish[index].fd = SOCKET_CONNECTION_FAILED;
      free(conn.mctavish[index].scientist_name);
+
+     //Wait until the thread ends
+     pthread_detach(conn.mctavish[index].id_thread);
 
      return DISCONNECT_MCTAVISH_OK;
 }
@@ -300,7 +301,8 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 }
 
 void *mcgruderListener(void *arg) {
-     char type, *header, *data, *buff;
+     char type, *header, *data, *file_name, *error_msg;
+     LastFile *shared_last_file;
      short length;
      int response, end = 0, file_type, receiving_file = 0, checksum_ok, bytes;
 
@@ -362,18 +364,37 @@ void *mcgruderListener(void *arg) {
                             checksum_ok = receiveChecksum(index, file_type, data);
                             receiving_file = 0;
 
-                            if (checksum_ok == CHECKSUM_KO) {
-                                Date date = files.images[conn.mcgruder[index].receivingFile].date;
-                                Time time = files.images[conn.mcgruder[index].receivingFile].time;
+                            Date date = files.images[conn.mcgruder[index].receivingFile].date;
+                            Time time = files.images[conn.mcgruder[index].receivingFile].time;
 
-                                asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
-                                bytes = asprintf(&buff, FILE_RECEIVED_KO_MSG, buff);
+                            asprintf(&file_name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
+
+                            if (checksum_ok == CHECKSUM_KO) {
+                                bytes = asprintf(&error_msg, FILE_RECEIVED_KO_MSG, file_name);
 
                                 removeLastImage(&files);
 
-                                write(1, buff, bytes);
-                                free(buff);
+                                write(1, error_msg, bytes);
+                                free(error_msg);
+                            } else {
+                                SEM_wait(&sem_file);
+
+                                //Save the type and the name in the shared memory region
+                                shared_last_file = shmat(id_last_file, NULL, 0);
+
+                                shared_last_file->type = IMAGE_TYPE;
+                                strcpy(shared_last_file->name, file_name);
+
+                                //Unlink from the shared memory reion
+                                shmdt(shared_last_file);
+
+                                SEM_signal(&sem_file);
+
+                                //Notify Paquita that a new file has arrived
+                                SEM_signal(&sem_sync_paquita);
                             }
+
+                            free(file_name);
                        } else if (receiving_file == 1 && file_type == ASTRONOMICAL_DATA_TYPE) {
                             receiving_file = 0;
 
@@ -385,20 +406,37 @@ void *mcgruderListener(void *arg) {
                             if (response == SOCKET_CONNECTION_KO) {
                                  disconnectMcGruder(index);
                             } else {
-                                 asprintf(&buff, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
-                                 bytes = asprintf(&buff, FILE_RECEIVED_OK_MSG, buff);
+                                 asprintf(&file_name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
 
-                                 write(1, buff, bytes);
-                                 free(buff);
+                                 SEM_wait(&sem_file);
+
+                                 //Save the type and the name in the shared memory region
+                                 shared_last_file = shmat(id_last_file, NULL, 0);
+
+                                 shared_last_file->type = ASTRONOMICAL_DATA_TYPE;
+                                 strcpy(shared_last_file->name, file_name);
+
+                                 //Unlink from the shared memory reion
+                                 shmdt(shared_last_file);
+
+                                 SEM_signal(&sem_file);
+
+                                 //Notify Paquita that a new file has arrived
+                                 SEM_signal(&sem_sync_paquita);
+
+                                 bytes = asprintf(&error_msg, FILE_RECEIVED_OK_MSG, file_name);
+
+                                 write(1, error_msg, bytes);
+                                 free(error_msg);
+                                 free(file_name);
                             }
                        }
                     }
                     break;
           }
+          free(header);
+          free(data);
      }
-
-     free(header);
-     free(data);
 
      return (void *) arg;
 }
@@ -431,7 +469,8 @@ void *mctavishListener(void *arg) {
                 end = 1;
                 break;
             case (char)RECEIVED_DATA_FRAME_TYPE:
-                //TODO semafors
+                SEM_wait(&sem_received);
+
                 //Get the data from Paquita
                 shared_received_data = shmat(id_received_data, NULL, 0);
                 avg_const = 0;
@@ -445,6 +484,8 @@ void *mctavishListener(void *arg) {
                 //Unlink from the shared memory reion
                 shmdt(shared_received_data);
 
+                SEM_signal(&sem_received);
+
                 response = sendFrame(conn.mctavish[index].fd, (char)RECEIVED_DATA_FRAME_TYPE, EMPTY_HEADER, (short)strlen(send_data), send_data);
                 free(send_data);
 
@@ -453,7 +494,8 @@ void *mctavishListener(void *arg) {
                 }
                 break;
             case (char)LAST_DATA_FRAME_TYPE:
-                //TODO semafors
+                SEM_wait(&sem_received);
+
                 //Get the data from Paquita
                 shared_last_data = shmat(id_last_data, NULL, 0);
                 avg_density = 0;
@@ -462,10 +504,12 @@ void *mctavishListener(void *arg) {
                     avg_density = (float)shared_last_data->acum_density/(float)shared_last_data->count_constellations;
                 }
 
-                asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->min_size, shared_last_data->max_size);
+                asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->max_size, shared_last_data->min_size);
 
                 //Unlink from the shared memory reion
                 shmdt(shared_last_data);
+
+                SEM_signal(&sem_received);
 
                 response = sendFrame(conn.mctavish[index].fd, (char)LAST_DATA_FRAME_TYPE, EMPTY_HEADER, strlen(send_data), send_data);
                 free(send_data);
@@ -475,17 +519,17 @@ void *mctavishListener(void *arg) {
                 }
                 break;
         }
-    }
 
-    free(header);
-    free(data);
+        free(header);
+        free(data);
+    }
 
     return (void *) arg;
 }
 
 int receiveMetadata(char *data) {
      int i = 0, j, type = ERROR_TYPE, bytes;
-     char *file_type, *file_size, *file_name, *buff;
+     char *file_type, *file_size, *file_name, *buff, *full_name;
 
      file_type = calloc(1, sizeof(char));
      file_size = calloc(1, sizeof(char));
@@ -553,20 +597,21 @@ int receiveMetadata(char *data) {
      write(1, buff, bytes);
      free(buff);
 
-     asprintf(&file_name, FILES_PATH, file_name);
+     asprintf(&full_name, FILES_PATH, file_name);
 
-     if (createFile(file_name) == FILE_CREATED_KO) type = ERROR_TYPE;
+     if (createFile(full_name) == FILE_CREATED_KO) type = ERROR_TYPE;
 
      free(file_type);
      free(file_size);
      free(file_name);
+     free(full_name);
 
      return type;
 }
 
 void receiveFrame(int index, short length, int type, char *data) {
     int file_fd, response;
-    char *name;
+    char *name, *full_name;
     Date date;
     Time time;
 
@@ -576,8 +621,9 @@ void receiveFrame(int index, short length, int type, char *data) {
         time = files.images[conn.mcgruder[index].receivingFile].time;
 
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
-        asprintf(&name, FILES_PATH, name);
-        file_fd = open(name, O_WRONLY | O_APPEND);
+        asprintf(&full_name, FILES_PATH, name);
+
+        file_fd = open(full_name, O_WRONLY | O_APPEND);
 
         if (file_fd >= 0) {
             write(file_fd, data, length);
@@ -593,14 +639,17 @@ void receiveFrame(int index, short length, int type, char *data) {
         }
 
         free(name);
+        free(full_name);
+
     } else if (type == ASTRONOMICAL_DATA_TYPE) {
         //Write the received data into the file
         date = files.astronomical_data[conn.mcgruder[index].receivingFile].date;
         time = files.astronomical_data[conn.mcgruder[index].receivingFile].time;
 
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
-        asprintf(&name, FILES_PATH, name);
-        file_fd = open(name, O_WRONLY | O_APPEND);
+        asprintf(&full_name, FILES_PATH, name);
+
+        file_fd = open(full_name, O_WRONLY | O_APPEND);
 
         if (file_fd >= 0) {
             write(file_fd, data, length);
@@ -608,6 +657,7 @@ void receiveFrame(int index, short length, int type, char *data) {
         }
 
         free(name);
+        free(full_name);
     }
 }
 
@@ -676,4 +726,59 @@ int receiveChecksum(int index, int type, char *data) {
     free(name);
 
     return CHECKSUM_OK;
+}
+
+void *mcgruderServer(void *arg) {
+    int aux_fd;
+    while (1) {
+        write(1, WAITING_MCGRUDER_MSG, strlen(WAITING_MCGRUDER_MSG));
+
+        //Connect with the McGruder clients
+        aux_fd = acceptMcGruder(conn.mcgruder_fd);
+
+        if (aux_fd != MC_GRUDER_ACCEPT_FAILED) {
+            conn.mcgruder[conn.num_mcgruder_processes].fd = aux_fd;
+            conn.num_mcgruder_processes++;
+            conn.mcgruder = (McGruder*) realloc(conn.mcgruder, sizeof(McGruder) * (conn.num_mcgruder_processes + 1));
+        } else {
+            write(1, CONNECTION_MCGRUDER_ERROR_MSG, strlen(CONNECTION_MCGRUDER_ERROR_MSG));
+        }
+
+        if (connectMcGruder(conn.num_mcgruder_processes - 1) == CONNECT_MCGRUDER_KO) {
+            //If something goes wrong, we close the socket and remove the process
+            close(conn.mcgruder[conn.num_mcgruder_processes].fd);
+            conn.num_mcgruder_processes--;
+            conn.mcgruder = (McGruder*) realloc(conn.mcgruder, sizeof(McGruder) * (conn.num_mcgruder_processes + 1));
+        }
+    }
+
+    return (void *) arg;
+}
+
+void *mctavishServer(void *arg) {
+    int aux_fd;
+
+    while (1) {
+        write(1, WAITING_MCTAVISH_MSG, strlen(WAITING_MCTAVISH_MSG));
+
+        //Connect with the McTavish clients
+        aux_fd = acceptMcTavish(conn.mctavish_fd);
+
+        if (aux_fd != MC_TAVISH_ACCEPT_FAILED) {
+            conn.mctavish[conn.num_mctavish_processes].fd = aux_fd;
+            conn.num_mctavish_processes++;
+            conn.mctavish = (McTavish*) realloc(conn.mctavish, sizeof(McTavish) * (conn.num_mctavish_processes + 1));
+        } else {
+            write(1, CONNECTION_MCTAVISH_ERROR_MSG, strlen(CONNECTION_MCTAVISH_ERROR_MSG));
+        }
+
+        if (connectMcTavish(conn.num_mctavish_processes - 1) == CONNECT_MCTAVISH_KO) {
+            //If something goes wrong, we close the socket and remove the process
+            close(conn.mctavish[conn.num_mctavish_processes].fd);
+            conn.num_mctavish_processes--;
+            conn.mctavish = (McTavish*) realloc(conn.mctavish, sizeof(McTavish) * (conn.num_mctavish_processes + 1));
+        }
+    }
+
+    return (void *) arg;
 }

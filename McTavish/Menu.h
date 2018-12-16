@@ -34,12 +34,12 @@
 #define DATA_ERROR_MSG "Sorry, there was an error while accessing the data\n"
 #define RECEIVED_IMAGES_PATTERN "\t-> Number of received images: %d\n"
 #define RECEIVED_ASTRONOMICAL_DATA_PATTERN "\t-> Number of received astronomical data files: %d\n"
-#define IMAGES_SIZE_PATTERN "\t-> Total size of received images: %d\n"
+#define IMAGES_SIZE_PATTERN "\t-> Total size of received images: %.2f KB\n"
 #define AVG_CONSTELLATIONS_PATTERN "\t-> Average of constellations: %.2f\n"
 #define NUM_CONSTELLATIONS_PATTERN "\t-> There are %d constellations\n"
 #define AVG_DENSITY_PATTERN "\t-> Average density: %.2f\n"
-#define MAX_SIZE_PATTERN "\t-> Maximum size: %d\n"
-#define MIN_SIZE_PATTERN "\t-> Minimum size: %d\n"
+#define MAX_SIZE_PATTERN "\t-> Maximum size: %.2f\n"
+#define MIN_SIZE_PATTERN "\t-> Minimum size: %.2f\n"
 
 
 //Type definitions

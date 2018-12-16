@@ -1,7 +1,7 @@
 /*******************************************************************
 *
 * @File: Exit.h
-* @Purpose: Handle the termination of McGruder
+* @Purpose: Handle the termination of Lionel
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
 * @Date: 27/10/2018
@@ -18,7 +18,6 @@
 #include <string.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
-#include "Paquita.h"
 #include "Connection.h"
 
 //Constants

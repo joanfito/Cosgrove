@@ -1,7 +1,7 @@
 /*******************************************************************
 *
 * @File: Exit.c
-* @Purpose: Handle the termination of McGruder
+* @Purpose: Handle the termination of Lionel
 * @Author: Joan Fitó Martínez
 * @Author: Adrián García Garrido
 * @Date: 27/10/2018
@@ -13,7 +13,8 @@
 extern Connection conn;
 extern Configuration config;
 extern Files files;
-extern int id_received_data, id_last_data;
+extern int id_received_data, id_last_data, id_last_file;
+extern semaphore sem_sync_paquita, sem_file, sem_received;
 
 void closeLionel() {
      write(1, SHUT_DOWN_MSG, strlen(SHUT_DOWN_MSG));
@@ -55,8 +56,12 @@ void safeClose() {
          //Erease the shared memory regions
          shmctl(id_received_data, IPC_RMID, NULL);
          shmctl(id_last_data, IPC_RMID, NULL);
+         shmctl(id_last_file, IPC_RMID, NULL);
 
          //Destroy the semaphores
+         SEM_destructor(&sem_sync_paquita);
+         SEM_destructor(&sem_file);
+         SEM_destructor(&sem_received);
 
          exit(0);
      } else {

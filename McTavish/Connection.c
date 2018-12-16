@@ -43,6 +43,7 @@ int connectLionel(Configuration config) {
      int socket_fd, frame_ok, response;
      char type, *header, *data;
      short length;
+     
      socket_fd = openLionel(config);
      if (socket_fd == CONNECTION_FAILED) {
           return CONNECTION_FAILED;
@@ -85,6 +86,8 @@ int disconnectLionel(Configuration config, int socket_fd) {
      frame_ok = readFrame(socket_fd, &type, &header, &length, &data);
 
      if (frame_ok == SOCKET_CONNECTION_KO) {
+          free(data);
+          free(header);
           //If the socket is down, we can disconnect the mcgruder process
           return DISCONNECTION_SUCCESSFUL;
      }

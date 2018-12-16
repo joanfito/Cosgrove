@@ -73,8 +73,8 @@ void executeOption1() {
 
     //Check if it is the asked frame
     if (type == (char)RECEIVED_DATA_FRAME_TYPE && strcmp(header, EMPTY_HEADER) == 0) {
-        int i = 0, j, count_images, images_size, count_astronomical;
-        float avg_const;
+        int i = 0, j, count_images, count_astronomical;
+        float avg_const, images_size;
         char *aux;
 
         aux = calloc(1, sizeof(char));
@@ -96,7 +96,7 @@ void executeOption1() {
             aux = realloc(aux, sizeof(char) * (j + 1));
         }
         aux[j] = '\0';
-        images_size = atoi(aux);
+        images_size = atof(aux);
         i++;
 
         //Read the number of astronomical data files
@@ -167,13 +167,13 @@ void executeOption2() {
 
     //Check if it is the asked frame
     if (type == (char)LAST_DATA_FRAME_TYPE && strcmp(header, EMPTY_HEADER) == 0) {
-        int i = 0, j, count_const, min_size, max_size;
-        float avg_density;
+        int i = 0, j, count_const;
+        float avg_density, min_size, max_size;
         char *aux;
 
         aux = calloc(1, sizeof(char));
 
-        //Read the number of images
+        //Read the number of constellations
         j = 0;
         while (data[i] != '&') {
             aux[j++] = data[i++];
@@ -183,7 +183,7 @@ void executeOption2() {
         count_const = atoi(aux);
         i++;
 
-        //Read the total size of images
+        //Read the average density
         j = 0;
         while (data[i] != '&') {
             aux[j++] = data[i++];
@@ -193,24 +193,24 @@ void executeOption2() {
         avg_density = atof(aux);
         i++;
 
-        //Read the number of astronomical data files
+        //Read maximum size
         j = 0;
         while (data[i] != '&') {
             aux[j++] = data[i++];
             aux = realloc(aux, sizeof(char) * (j + 1));
         }
         aux[j] = '\0';
-        min_size = atoi(aux);
+        max_size = atof(aux);
         i++;
 
-        //Read the average of constellations
+        //Read the minimum size
         j = 0;
         while (data[i] != '\0') {
             aux[j++] = data[i++];
             aux = realloc(aux, sizeof(char) * (j + 1));
         }
         aux[j] = '\0';
-        max_size = atoi(aux);
+        min_size = atof(aux);
 
         free(aux);
 

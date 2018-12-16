@@ -78,7 +78,6 @@ int getFileSize(char *filename) {
      fd = open(filename, O_RDONLY);
 
      if (fd < 0) {
-          close(fd);
           return -1;
      } else {
           while (read(fd, &aux, 1) > 0) compt++;
@@ -147,7 +146,7 @@ void removeLastAstronomicalData(Files *files) {
 
 int saveReceivedFiles(Files files) {
     int fd, i, bytes;
-    char *line = NULL;
+    char *line = NULL, *formatted_time, *formatted_date;
 
     fd = open(KALKUN_PATH, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return KALKUN_SAVED_KO;
@@ -156,19 +155,29 @@ int saveReceivedFiles(Files files) {
     for (i = 0; i < files.num_images; i++) {
         //If the image has been received successfuly, we save it
         if (files.images[i].bytes_readed == files.images[i].size) {
-            bytes = asprintf(&line, KALKUN_LINE_PATTERN, getFormattedDate(files.images[i].date), getFormattedTime(files.images[i].time), files.images[i].size);
+            formatted_date = getFormattedDate(files.images[i].date);
+            formatted_time = getFormattedTime(files.images[i].time);
+
+            bytes = asprintf(&line, KALKUN_LINE_PATTERN, formatted_date, formatted_time, files.images[i].size);
             write(fd, line, bytes);
+
+            free(formatted_date);
+            free(formatted_time);
+            free(line);
         }
     }
 
     //Save the astronomical data
     for (i = 0; i < files.num_astronomical_data; i++) {
-        bytes = asprintf(&line, KALKUN_LINE_PATTERN, getFormattedDate(files.astronomical_data[i].date), getFormattedTime(files.astronomical_data[i].time), files.astronomical_data[i].size);
-        write(fd, line, bytes);
-    }
+        formatted_date = getFormattedDate(files.astronomical_data[i].date);
+        formatted_time = getFormattedTime(files.astronomical_data[i].time);
 
-    if (line != NULL) {
-         free(line);
+        bytes = asprintf(&line, KALKUN_LINE_PATTERN, formatted_date, formatted_time, files.astronomical_data[i].size);
+        write(fd, line, bytes);
+
+        free(formatted_date);
+        free(formatted_time);
+        free(line);
     }
     
     return KALKUN_SAVED_OK;

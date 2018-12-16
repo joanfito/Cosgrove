@@ -123,6 +123,16 @@ char *calculateChecksum(char *filename);
 ********************************************************************/
 int getFileSize(char *filename);
 
+/*******************************************************************
+*
+* @Name: printProgressbar
+* @Purpose: Prints the progessbar of the current progress
+* @Arguments: percentage (in) = current percentage
+*             progress_completed (in/out) = number of bars reached
+*                                           (from 0 to 10)
+* @Return: --
+*
+********************************************************************/
 void printProgressbar(float percentage, int *progress_completed);
 
 
