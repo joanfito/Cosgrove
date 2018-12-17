@@ -42,6 +42,9 @@ int main(int argc, char *argv[]) {
             write(1, buff, bytes);
             free(buff);
 
+            //Ignore the SIGPIPE so McTavish can be closed safely
+            //signal(SIGPIPE, SIG_IGN);
+
             //Start the connection with Lionel
             write(1, CONNECTION_LIONEL_MSG, strlen(CONNECTION_LIONEL_MSG));
             socket_fd = connectLionel(config);

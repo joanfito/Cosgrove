@@ -59,6 +59,9 @@ int main(int argc, char *argv[]) {
                     signal(SIGALRM, searchAlarm);
                     alarm(config.search_time);
 
+                    //Ignore the SIGPIPE so McGruder can be closed safely
+                    //signal(SIGPIPE, SIG_IGN);
+
                     //Throw a new thread to listen the lionel process
                     //pthread_t thread_lionel;
 
