@@ -12,8 +12,8 @@
 
 ReceivedData received_data;
 ReceivedAstronomicalData last_astronomical_data;
-int id_received_data, id_last_data, id_last_file;
-semaphore sem_sync_paquita, sem_file, sem_received;
+extern int id_received_data, id_last_data, id_last_file;
+extern semaphore sem_sync_paquita, sem_file, sem_received;
 
 int initPaquita() {
     //Initialize the variables
@@ -25,44 +25,19 @@ int initPaquita() {
     resetLastAtronomicalData();
 
     //Create the semaphore for both received data and last astronomical data
-    SEM_constructor(&sem_received);
+    SEM_constructor_with_name(&sem_received, ftok("Paquita.c", 29));
     SEM_init(&sem_received, 1);
 
     //Create the semaphore for the last file
-    SEM_constructor(&sem_file);
+    SEM_constructor_with_name(&sem_file, ftok("Paquita.c", 33));
     SEM_init(&sem_file, 1);
 
     //Create the synchronization semaphore
-    SEM_constructor(&sem_sync_paquita);
+    SEM_constructor_with_name(&sem_sync_paquita, ftok("Paquita.c", 74));
     SEM_init(&sem_sync_paquita, 0);
 
-
-    //Create the shared memory region for the received data
-    id_received_data = shmget(IPC_PRIVATE, sizeof(ReceivedData), IPC_CREAT | IPC_EXCL | 0600);
-
-    if (id_received_data == -1) {
-         return PAQUITA_CREATED_KO;
-    }
-
     shareReceivedData();
-
-    //Create the shared memory region for the last astronomical data
-    id_last_data = shmget(IPC_PRIVATE, sizeof(ReceivedAstronomicalData), IPC_CREAT | IPC_EXCL | 0600);
-
-    if (id_last_data == -1) {
-        shmctl(id_received_data, IPC_RMID, NULL);
-        return PAQUITA_CREATED_KO;
-    }
     shareLastAtronomicalData();
-
-    //Create the shared memory region for the name of the file
-    id_last_file = shmget(IPC_PRIVATE, sizeof(LastFile), IPC_CREAT | IPC_EXCL | 0600);
-
-    if (id_last_file == -1) {
-        shmctl(id_received_data, IPC_RMID, NULL);
-        shmctl(id_last_data, IPC_RMID, NULL);
-        return PAQUITA_CREATED_KO;
-    }
 
     return PAQUITA_CREATED_OK;
 }

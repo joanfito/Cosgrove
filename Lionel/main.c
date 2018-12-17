@@ -19,10 +19,13 @@
 
 #define INVALID_ARGS_ERROR_MSG "Lionel needs a configuration file in order to work properly\n"
 #define STARTING_MSG "Starting Lionel.\n"
+#define ERROR_SHARED_MEM_MSG "An error occur while creating the shared memory regions\n"
 
 Configuration config;
 Connection conn;
 Files files;
+semaphore sem_sync_paquita, sem_file, sem_received;
+int id_received_data, id_last_data, id_last_file;
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -69,15 +72,57 @@ int main(int argc, char *argv[]) {
                         closeLionel();
                     }
 
-                    //Initialize and run Paquita
-                    response = initPaquita();
-                    if (response != PAQUITA_CREATED_OK) {
-                        write(1, PAQUITA_CREATION_ERROR_MSG, strlen(PAQUITA_CREATION_ERROR_MSG));
+                    //Create the shared memory region for the received data
+                    id_received_data = shmget(IPC_PRIVATE, sizeof(ReceivedData), IPC_CREAT | IPC_EXCL | 0600);
+
+                    if (id_received_data == -1) {
+                         write(1, INVALID_ARGS_ERROR_MSG, strlen(INVALID_ARGS_ERROR_MSG));
+                         closeLionel();
+                    }
+
+                    //Create the shared memory region for the last astronomical data
+                    id_last_data = shmget(IPC_PRIVATE, sizeof(ReceivedAstronomicalData), IPC_CREAT | IPC_EXCL | 0600);
+
+                    if (id_last_data == -1) {
+                        shmctl(id_received_data, IPC_RMID, NULL);
+                        write(1, INVALID_ARGS_ERROR_MSG, strlen(INVALID_ARGS_ERROR_MSG));
                         closeLionel();
                     }
-                    
-                    startPaquita();
-                    pause();
+
+                    //Create the shared memory region for the name of the file
+                    id_last_file = shmget(IPC_PRIVATE, sizeof(LastFile), IPC_CREAT | IPC_EXCL | 0600);
+
+                    if (id_last_file == -1) {
+                        shmctl(id_received_data, IPC_RMID, NULL);
+                        shmctl(id_last_data, IPC_RMID, NULL);
+                        write(1, INVALID_ARGS_ERROR_MSG, strlen(INVALID_ARGS_ERROR_MSG));
+                        closeLionel();
+                    }
+
+                    int paquita;
+
+                    paquita = fork();
+
+                    switch (paquita) {
+                         case 0:
+                              //Initialize and run Paquita
+                              response = initPaquita();
+                              if (response != PAQUITA_CREATED_OK) {
+                                  write(1, PAQUITA_CREATION_ERROR_MSG, strlen(PAQUITA_CREATION_ERROR_MSG));
+                                  closeLionel();
+                              }
+
+                              startPaquita();
+                              break;
+                         default:
+                              //Create the semaphores
+                              SEM_constructor_with_name(&sem_received, ftok("Paquita.c", 29));
+                              SEM_constructor_with_name(&sem_file, ftok("Paquita.c", 33));
+                              SEM_constructor_with_name(&sem_sync_paquita, ftok("Paquita.c", 74));
+
+                              wait(0);
+                              break;
+                    }
                 }
             }
         }
