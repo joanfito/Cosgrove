@@ -30,12 +30,12 @@
 #define FILE_NAME_PATTERN "%.4d%.2d%.2d-%.2d%.2d%.2d.%s"
 #define FILES_PATH "./files/%s"
 #define KALKUN_PATH "./files/Kalkun.txt"
+#define WATKIN_PATH "./files/Watkin.txt"
 #define KALKUN_LINE_PATTERN "%s %s %d bytes\n"
 #define FILE_CREATED_OK 1
 #define FILE_CREATED_KO 2
 #define KALKUN_SAVED_OK 3
 #define KALKUN_SAVED_KO 4
-#define PROGRESSBAR_PATTERN "\r\t [%s] %.2f%%"
 
 //Type definitions
 typedef struct {
@@ -44,6 +44,7 @@ typedef struct {
      int size;
      int bytes_readed;
      int percentage;
+     int entered;
 } Image;
 
 typedef struct {
@@ -180,9 +181,22 @@ int saveReceivedFiles(Files files);
 * @Arguments: percentage (in) = current percentage
 *             progress_completed (in/out) = number of bars reached
 *                                           (from 0 to 10)
+*             name (in) = file name
+*             entered (in/out) = flag to print the progress just once
 * @Return: --
 *
 ********************************************************************/
-void printProgressbar(float percentage, int *progress_completed);
+void printProgressbar(float percentage, int *progress_completed, char *name, int *entered);
+
+/*******************************************************************
+*
+* @Name: readAstronomicalData
+* @Purpose: Read the data of the astronomical data file and save it
+*           in shared memory
+* @Arguments: name (in) = name of the file
+* @Return: --
+*
+********************************************************************/
+void readAstronomicalData(char *name);
 
 #endif

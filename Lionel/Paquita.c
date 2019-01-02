@@ -12,7 +12,7 @@
 
 ReceivedData received_data;
 ReceivedAstronomicalData last_astronomical_data;
-extern int id_received_data, id_last_data, id_last_file;
+extern int id_received_data, id_last_data, id_last_file, id_file;
 extern semaphore sem_sync_paquita, sem_file, sem_received;
 
 int initPaquita() {
@@ -98,7 +98,8 @@ void astronomicalDataReceived(char *name) {
 
     min_size = last_astronomical_data.min_size;
     max_size = last_astronomical_data.max_size;
-    readAstronomicalData(name, &count_constellations, &acum_density, &min_size, &max_size);
+
+    processAstronomicalData(name, &count_constellations, &acum_density, &min_size, &max_size);
 
     //Update the values
     last_astronomical_data.count_constellations = count_constellations;
@@ -109,64 +110,62 @@ void astronomicalDataReceived(char *name) {
     received_data.acum_constellations += last_astronomical_data.count_constellations;
 }
 
-void readAstronomicalData(char *name, int *count_constellations, float *acum_density, float *min_size, float *max_size) {
-    int fd, endOfFile = 0, i = 0, j = 0;
+void processAstronomicalData(char *name, int *count_constellations, float *acum_density, float *min_size, float *max_size) {
+    int endOfFile = 0, i = 0, j = 0;
     char *full_name, *line, *density, *size;
     asprintf(&full_name, FILES_PATH, name);
 
-    fd = open(full_name, O_RDONLY);
     density = calloc(1, sizeof(char));
     size = calloc(1, sizeof(char));
 
-    if (fd > 0) {
-        //Parse the astronomical data file
-        while (endOfFile == 0) {
-            i = j = 0;
-            line = readLine(fd, '\n', &endOfFile);
+    //Get the data from shared memory
+    line = shmat(id_file, NULL, 0);
 
-            if (endOfFile == 1) {
-                free(line);
-                break;
-            }
+    //Parse the astronomical data file
+    i = 0;
+    while (endOfFile == 0) {
+        j = 0;
 
-            //Parse the line (<constellation_code> <density> <size>)
-            while (line[i] != ' ') {
-                i++;
-            }
+        //Parse the line (<constellation_code> <density> <size>)
+        while (line[i] != ' ') {
             i++;
+        }
+        i++;
 
-            while (line[i] != ' ') {
-                density[j++] = line[i++];
-                density = realloc(density, sizeof(char) * (j + 1));
-            }
-            density[j] = '\0';
-            i++;
+        while (line[i] != ' ') {
+            density[j++] = line[i++];
+            density = realloc(density, sizeof(char) * (j + 1));
+        }
+        density[j] = '\0';
+        i++;
 
-            j = 0;
-            while (line[i] != '\0') {
-                size[j++] = line[i++];
-                size = realloc(size, sizeof(char) * (j + 1));
-            }
-            size[j] = '\0';
-            i++;
+        j = 0;
+        while (line[i] != '\n') {
+            size[j++] = line[i++];
+            size = realloc(size, sizeof(char) * (j + 1));
+        }
+        size[j] = '\0';
+        i++;
 
-            free(line);
+        *count_constellations = *count_constellations + 1;
+        *acum_density = *acum_density + atof(density);
 
-            *count_constellations = *count_constellations + 1;
-            *acum_density = *acum_density + atof(density);
-
-            //Update the minimum or maximum size, if required
-            if (atof(size) > *max_size) {
-                *max_size = atof(size);
-            }
-
-            if (atof(size) < *min_size) {
-                *min_size = atof(size);
-            }
+        //Update the minimum or maximum size, if required
+        if (atof(size) > *max_size) {
+            *max_size = atof(size);
         }
 
-        close(fd);
+        if (atof(size) < *min_size) {
+            *min_size = atof(size);
+        }
+
+        if (line[i] == '\0') endOfFile = 1;
+        i++;
+
     }
+
+    //Unlink from the shared memory reion
+    shmdt(line);
 
     free(full_name);
     free(density);

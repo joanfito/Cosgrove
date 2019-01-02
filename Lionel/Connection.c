@@ -250,9 +250,6 @@ int disconnectMcTavish(int index) {
      conn.mctavish[index].fd = SOCKET_CONNECTION_FAILED;
      free(conn.mctavish[index].scientist_name);
 
-     //Wait until the thread ends
-     pthread_detach(conn.mctavish[index].id_thread);
-
      return DISCONNECT_MCTAVISH_OK;
 }
 
@@ -324,32 +321,40 @@ void *mcgruderListener(void *arg) {
                     end = 1;
                     break;
                case (char)FILE_FRAME_TYPE:
+               printf("god debug - %s\n", header);
                     if (strcmp(header, METADATA_HEADER) == 0) {
                         //We only process the metadata if we aren't receiving any file
                         if (receiving_file == 0) {
                             file_type = receiveMetadata(data);
-
+                            printf("skere3\n");
                             if (file_type != ERROR_TYPE) {
+                                printf("patata1\n");
                                 //Save the index of the receiving file
                                 if (file_type == IMAGE_TYPE) {
                                      conn.mcgruder[index].receivingFile = files.num_images - 1;
                                 } else if (file_type == ASTRONOMICAL_DATA_TYPE) {
+                                    printf("patata2\n");
                                      conn.mcgruder[index].receivingFile = files.num_astronomical_data - 1;
                                 }
-
+                                printf("patata3\n");
                                 //Lionel is ready to receive a file
                                 receiving_file = 1;
 
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
+                                printf("patata4\n");
                                 if (response == SOCKET_CONNECTION_KO) {
                                     receiving_file = 0;
                                     disconnectMcGruder(index);
                                 }
+                                printf("patata5\n");
                             } else {
+                                printf("skere4\n");
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_KO_HEADER, 0, NULL);
+                                printf("skere5\n");
                                 if (response == SOCKET_CONNECTION_KO) {
-                                    disconnectMcGruder(index);
+                                        disconnectMcGruder(index);
                                 }
+                                printf("skere6\n");
                             }
                         }
                     } else if (strcmp(header, EMPTY_HEADER) == 0) {
@@ -421,12 +426,15 @@ void *mcgruderListener(void *arg) {
 
                                  SEM_signal(&sem_file);
 
+                                 //Read the data
+                                 readAstronomicalData(file_name);
+
                                  //Notify Paquita that a new file has arrived
                                  SEM_signal(&sem_sync_paquita);
 
                                  bytes = asprintf(&error_msg, FILE_RECEIVED_OK_MSG, file_name);
-
                                  write(1, error_msg, bytes);
+
                                  free(error_msg);
                                  free(file_name);
                             }
@@ -504,7 +512,12 @@ void *mctavishListener(void *arg) {
                     avg_density = (float)shared_last_data->acum_density/(float)shared_last_data->count_constellations;
                 }
 
-                asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->max_size, shared_last_data->min_size);
+                //If the minimum size equals to float maximum value, Lionel hasn't received a astronoical data file yet
+                if (shared_last_data->min_size == FLT_MAX) {
+                    asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->max_size, 0.0);
+                } else {
+                    asprintf(&send_data, LAST_DATA_PATTERN, shared_last_data->count_constellations, avg_density, shared_last_data->max_size, shared_last_data->min_size);
+                }
 
                 //Unlink from the shared memory reion
                 shmdt(shared_last_data);
@@ -573,6 +586,7 @@ int receiveMetadata(char *data) {
          files.images[files.num_images].size = atoi(file_size);
          files.images[files.num_images].bytes_readed = 0;
          files.images[files.num_images].percentage = 0;
+         files.images[files.num_images].entered = 0;
 
          //Assign memory for the next image
          files.num_images++;
@@ -596,11 +610,11 @@ int receiveMetadata(char *data) {
      bytes = asprintf(&buff, RECEIVING_FILE_MSG, file_name);
      write(1, buff, bytes);
      free(buff);
-
+     printf("skere1\n");
      asprintf(&full_name, FILES_PATH, file_name);
 
      if (createFile(full_name) == FILE_CREATED_KO) type = ERROR_TYPE;
-
+     printf("skere2 - type: %d\n", type);
      free(file_type);
      free(file_size);
      free(file_name);
@@ -628,7 +642,7 @@ void receiveFrame(int index, short length, int type, char *data) {
         if (file_fd >= 0) {
             write(file_fd, data, length);
             files.images[conn.mcgruder[index].receivingFile].bytes_readed += length;
-            printProgressbar(((float)files.images[conn.mcgruder[index].receivingFile].bytes_readed/(float)files.images[conn.mcgruder[index].receivingFile].size) * 100, &files.images[conn.mcgruder[index].receivingFile].percentage);
+            printProgressbar(((float)files.images[conn.mcgruder[index].receivingFile].bytes_readed/(float)files.images[conn.mcgruder[index].receivingFile].size) * 100, &files.images[conn.mcgruder[index].receivingFile].percentage, name, &files.images[conn.mcgruder[index].receivingFile].entered);
             close(file_fd);
         }
 

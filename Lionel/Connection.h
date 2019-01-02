@@ -73,6 +73,7 @@
 #define METADATA_HEADER "[METADATA]"
 #define ENDFILE_HEADER "[ENDFILE]"
 #define RECEIVING_FILE_MSG "\nReceiving %s ...\n"
+#define RECEIVING_FILE_PER_MSG "\nReceiving %s ... [%.2d%%]\n"
 #define FILE_RECEIVED_OK_MSG "\nFile %s received.\n"
 #define FILE_RECEIVED_KO_MSG "\nSomething failed while receiving %s.\n"
 #define RECEIVED_DATA_PATTERN "%d&%.2f&%d&%.2f"

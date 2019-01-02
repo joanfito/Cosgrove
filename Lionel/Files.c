@@ -10,6 +10,9 @@
 
 #include "Files.h"
 
+extern int id_file;
+extern semaphore sem_file;
+
 Files createFiles() {
      Files files;
 
@@ -88,30 +91,39 @@ int getFileSize(char *filename) {
 }
 
 int createFile(char *filename) {
+    printf("file1\n");
     int fd = open(filename, O_CREAT | O_EXCL, 0644);
-
+printf("file2\n");
     if (fd < 0) {
+        printf("file3\n");
         //If the file already exists, we remove it and create it again
         removeFile(filename);
+        printf("file4\n");
         fd = open(filename, O_CREAT | O_EXCL, 0644);
+        printf("file5\n");
         if (fd < 0) return FILE_CREATED_KO;
     }
-
+    printf("file6\n");
     close(fd);
+    printf("file7\n");
     return FILE_CREATED_OK;
 }
 
 void removeFile(char *filename) {
-     int script;
-
+     int script,;
+     printf("wotofok1\n");
      script = fork();
-
+printf("wotofok2\n");
      switch (script) {
           case 0:
+          printf("wotofok3\n");
                execl("/bin/rm","rm", "-rf", filename, NULL);
+               printf("wotofok4\n");
                break;
           default:
+          printf("wotofok paralel\n");
                wait(0);
+               printf("wotofok paralel 2\n");
                break;
      }
 }
@@ -148,6 +160,7 @@ int saveReceivedFiles(Files files) {
     int fd, i, bytes;
     char *line = NULL, *formatted_time, *formatted_date;
 
+    //Open the Kalkun file in order to save the images
     fd = open(KALKUN_PATH, O_CREAT | O_WRONLY | O_APPEND, 0644);
     if (fd < 0) return KALKUN_SAVED_KO;
 
@@ -167,6 +180,12 @@ int saveReceivedFiles(Files files) {
         }
     }
 
+    close(fd);
+
+    //Open the Watkin file in order to save the astronoical data files
+    fd = open(WATKIN_PATH, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    if (fd < 0) return KALKUN_SAVED_KO;
+
     //Save the astronomical data
     for (i = 0; i < files.num_astronomical_data; i++) {
         formatted_date = getFormattedDate(files.astronomical_data[i].date);
@@ -179,30 +198,54 @@ int saveReceivedFiles(Files files) {
         free(formatted_time);
         free(line);
     }
-    
+
     return KALKUN_SAVED_OK;
 }
 
-void printProgressbar(float percentage, int *progress_completed) {
+void printProgressbar(float percentage, int *progress_completed, char *name, int *entered) {
      char *bar;
-     unsigned char current_progress[11];
-     int bytes, i;
+     int bytes;
 
      //If its a multiple of 10, we increase the progressbar
-     if ((int)percentage % 10 == 0) {
+     if ((int)percentage % 10 == 0 && *entered == 0) {
           *progress_completed = (int)percentage / 10;
-     }
 
-     for (i = 0; i < *progress_completed; i++) {
-          current_progress[i] = '#';
-     }
+          //Show the current progress
+          bytes = asprintf(&bar, RECEIVING_FILE_PER_MSG, name, ((int)percentage/10)*10);
+          write(1, bar, bytes);
+          free(bar);
 
-     for (i = *progress_completed; i < 10; i++) {
-          current_progress[i] = ' ';
+          *entered = 1;
+     } else if ((int)percentage % 10 != 0) {
+         *entered = 0;
      }
-     current_progress[i] = '\0';
+}
 
-     bytes = asprintf(&bar, PROGRESSBAR_PATTERN, current_progress, percentage);
-     write(1, bar, bytes);
-     free(bar);
+void readAstronomicalData(char *name) {
+    int fd, i = 0;
+    char *full_name, *line, aux;
+    asprintf(&full_name, FILES_PATH, name);
+
+    fd = open(full_name, O_RDONLY);
+
+    if (fd > 0) {
+        SEM_wait(&sem_file);
+
+        //Read the astronomical data file
+        line = shmat(id_file, NULL, 0);
+
+        //Copy the data of the file into the shared memory
+        while (read(fd, &aux, 1) > 0) {
+            line[i++] = aux;
+        }
+        line[i] = '\0';
+
+        //Unlink from the shared memory region
+        shmdt(line);
+
+        SEM_signal(&sem_file);
+        close(fd);
+    }
+
+    free(full_name);
 }

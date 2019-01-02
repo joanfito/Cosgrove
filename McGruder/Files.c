@@ -61,7 +61,9 @@ void scanDirectory(int socket_fd) {
                         if (isImage(file)) {
                              sendImage(file, socket_fd);
                         } else if (isAstronomicalData(file)) {
+                            printf("ARRIBA\n");
                              sendAstronomicalData(file, socket_fd);
+                             printf("ABAJO\n");
                         }
                         free(file);
                    }
@@ -145,6 +147,7 @@ int sendImage(char *filename, int socket_fd) {
      if (strlen(checksum) < 1) {
           free(fullname);
           free(checksum);
+          close(fd);
           return SEND_IMAGE_KO;
      }
 
@@ -161,6 +164,7 @@ int sendImage(char *filename, int socket_fd) {
           free(fullname);
           free(checksum);
           free(metadata);
+          close(fd);
           safeClose();
      }
 
@@ -172,6 +176,7 @@ int sendImage(char *filename, int socket_fd) {
           free(fullname);
           free(header);
           free(data);
+          close(fd);
           safeClose();
      }
 
@@ -179,6 +184,7 @@ int sendImage(char *filename, int socket_fd) {
          free(fullname);
          free(header);
          free(data);
+         close(fd);
          return SEND_TXT_KO;
      }
 
@@ -187,7 +193,7 @@ int sendImage(char *filename, int socket_fd) {
 
      frame = calloc(1, sizeof(char) * FRAME_SIZE);
 
-     //TODO Decompose the image into smaller frames and sent it
+     //Decompose the image into smaller frames and sent it
      int i, num_trames, bytes_readed = 0, current_frame_size, progress_completed = 0;
      num_trames = (size / FRAME_SIZE) + (size % FRAME_SIZE == 0 ? 0 : 1);
 
@@ -208,6 +214,7 @@ int sendImage(char *filename, int socket_fd) {
           frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, EMPTY_HEADER, (short)current_frame_size, frame);
           if (frame_ok == SOCKET_CONNECTION_KO) {
                free(frame);
+               close(fd);
                safeClose();
           }
 
@@ -217,6 +224,7 @@ int sendImage(char *filename, int socket_fd) {
                free(header);
                free(data);
                free(frame);
+               close(fd);
                safeClose();
           }
 
@@ -234,6 +242,7 @@ int sendImage(char *filename, int socket_fd) {
      }
      write(1, "\n\n", 2);
      free(frame);
+     close(fd);
 
      //Send the checksum
      frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, (short)strlen(checksum), checksum);
@@ -279,84 +288,98 @@ int sendAstronomicalData(char *filename, int socket_fd) {
      char *header, *data, type;
      short length;
 
+     printf("inici\n");
      bytes = asprintf(&fullname, FILES_PATH, filename);
-
+     printf("inici2\n");
      fd = open(fullname, O_RDONLY);
-
+     printf("inici3\n");
      if (fd < 0) {
           free(fullname);
           return SEND_TXT_KO;
      }
-
+     printf("inici4\n");
      bytes = asprintf(&buff, SEND_FILE_PATTERN, filename);
      write(1, buff, bytes);
      free(buff);
-
+     printf("inici5\n");
      //Get the image length
      size = getFileSize(fullname);
 
      //Create the metadata
      asprintf(&metadata, METADATA_PATTERN, "txt", size, filename);
-
+     printf("inici6\n");
      //Send the metadata
      frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, METADATA_HEADER, (short)strlen(metadata), metadata);
 
      if (frame_ok == SOCKET_CONNECTION_KO) {
+         printf("skere1\n");
           free(fullname);
           free(metadata);
+          close(fd);
           safeClose();
      }
-
+     printf("patito1\n");
      free(metadata);
-
+     printf("patito1.5\n");
      //Read if lionel is gonna listen us
      response = readFrame(socket_fd, &type, &header, &length, &data);
+     printf("patito1.5.2\n");
      if (response == SOCKET_CONNECTION_KO) {
+         printf("skere2\n");
           free(fullname);
           free(header);
           free(data);
+          close(fd);
           safeClose();
      }
-
+     printf("patito2\n");
      if (strcmp(header, SEND_OK_HEADER) != 0) {
+         printf("skere3\n");
          free(fullname);
          free(header);
          free(data);
+         close(fd);
          return SEND_TXT_KO;
      }
-
+     printf("patito3\n");
      free(header);
      free(data);
-
+     printf("patito4\n");
      frame = calloc(1, sizeof(char) * (size + 1));
      read(fd, frame, size);
      frame[size] = '\0';
-
+     printf("patito5\n");
      frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, EMPTY_HEADER, (short)strlen(frame), frame);
      if (frame_ok == SOCKET_CONNECTION_KO) {
+         printf("skere4\n");
           free(fullname);
+          close(fd);
           safeClose();
      }
-
+     printf("patito6\n");
      free(frame);
-
+     close(fd);
+printf("patito7\n");
      //Send the enfile frame
      frame_ok = sendFrame(socket_fd, (char)FILE_FRAME_TYPE, ENDFILE_HEADER, 0, NULL);
      if (frame_ok == SOCKET_CONNECTION_KO) {
+         printf("skere5\n");
           free(fullname);
           safeClose();
      }
-
+     printf("patito8\n");
      //Lionel response
      response = readFrame(socket_fd, &type, &header, &length, &data);
      if (response == SOCKET_CONNECTION_KO) {
+         printf("skere6\n");
           free(fullname);
           free(header);
           free(data);
           safeClose();
      }
-
+printf("patito9\n");
      if (strcmp(header, FILE_OK_HEADER) != 0) {
+         printf("skere7\n");
          write(1, FILE_NOT_SENT_MSG, strlen(FILE_NOT_SENT_MSG));
 
          free(fullname);
@@ -365,14 +388,14 @@ int sendAstronomicalData(char *filename, int socket_fd) {
 
          return SEND_TXT_KO;
      }
-
+     printf("skere8\n");
      removeFile(fullname);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
-
+printf("patito10\n");
      free(fullname);
      free(header);
      free(data);
-
+printf("patito11\n");
      return SEND_TXT_OK;
 }
 

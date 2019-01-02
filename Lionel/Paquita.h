@@ -109,7 +109,7 @@ void astronomicalDataReceived(char *name);
 
 /*******************************************************************
 *
-* @Name: readAstronomicalData
+* @Name: processAstronomicalData
 * @Purpose: Read and process the data of the astronomical data file
 * @Arguments: name (in) = name of the file
 *             count_constellations (in/out) = number of constellations
@@ -119,7 +119,7 @@ void astronomicalDataReceived(char *name);
 * @Return: --
 *
 ********************************************************************/
-void readAstronomicalData(char *name, int *count_constellations, float *acum_density, float *min_size, float *max_size);
+void processAstronomicalData(char *name, int *count_constellations, float *acum_density, float *min_size, float *max_size);
 
 /*******************************************************************
 *

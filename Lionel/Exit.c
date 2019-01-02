@@ -13,7 +13,7 @@
 extern Connection conn;
 extern Configuration config;
 extern Files files;
-extern int id_received_data, id_last_data, id_last_file;
+extern int id_received_data, id_last_data, id_last_file, id_file;
 extern semaphore sem_sync_paquita, sem_file, sem_received;
 
 void closeLionel() {
@@ -57,6 +57,7 @@ void safeClose() {
          shmctl(id_received_data, IPC_RMID, NULL);
          shmctl(id_last_data, IPC_RMID, NULL);
          shmctl(id_last_file, IPC_RMID, NULL);
+         shmctl(id_file, IPC_RMID, NULL);
 
          //Destroy the semaphores
          SEM_destructor(&sem_sync_paquita);

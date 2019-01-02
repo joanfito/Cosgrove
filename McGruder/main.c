@@ -59,15 +59,6 @@ int main(int argc, char *argv[]) {
                     signal(SIGALRM, searchAlarm);
                     alarm(config.search_time);
 
-                    //Ignore the SIGPIPE so McGruder can be closed safely
-                    //signal(SIGPIPE, SIG_IGN);
-
-                    //Throw a new thread to listen the lionel process
-                    //pthread_t thread_lionel;
-
-                    //response = pthread_create(&thread_lionel, NULL, lionelListener, &socket_fd);
-                    //if (response != 0) closeMcGruder();
-
                     while (1) {
                          //Scan the files folder of the telescope
                          write(1, WAITING_MSG, strlen(WAITING_MSG));
