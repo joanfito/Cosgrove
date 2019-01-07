@@ -91,41 +91,15 @@ int getFileSize(char *filename) {
 }
 
 int createFile(char *filename) {
-    printf("file1\n");
     int fd = open(filename, O_CREAT | O_EXCL, 0644);
-printf("file2\n");
-    if (fd < 0) {
-        printf("file3\n");
-        //If the file already exists, we remove it and create it again
-        removeFile(filename);
-        printf("file4\n");
-        fd = open(filename, O_CREAT | O_EXCL, 0644);
-        printf("file5\n");
-        if (fd < 0) return FILE_CREATED_KO;
-    }
-    printf("file6\n");
-    close(fd);
-    printf("file7\n");
-    return FILE_CREATED_OK;
-}
 
-void removeFile(char *filename) {
-     int script,;
-     printf("wotofok1\n");
-     script = fork();
-printf("wotofok2\n");
-     switch (script) {
-          case 0:
-          printf("wotofok3\n");
-               execl("/bin/rm","rm", "-rf", filename, NULL);
-               printf("wotofok4\n");
-               break;
-          default:
-          printf("wotofok paralel\n");
-               wait(0);
-               printf("wotofok paralel 2\n");
-               break;
-     }
+    if (fd < 0) {
+        return FILE_CREATED_KO;
+    }
+
+    close(fd);
+
+    return FILE_CREATED_OK;
 }
 
 char *typeToLowerCase(char *filename) {

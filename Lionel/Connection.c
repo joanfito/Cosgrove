@@ -321,40 +321,34 @@ void *mcgruderListener(void *arg) {
                     end = 1;
                     break;
                case (char)FILE_FRAME_TYPE:
-               printf("god debug - %s\n", header);
                     if (strcmp(header, METADATA_HEADER) == 0) {
                         //We only process the metadata if we aren't receiving any file
                         if (receiving_file == 0) {
                             file_type = receiveMetadata(data);
-                            printf("skere3\n");
+
                             if (file_type != ERROR_TYPE) {
-                                printf("patata1\n");
                                 //Save the index of the receiving file
                                 if (file_type == IMAGE_TYPE) {
                                      conn.mcgruder[index].receivingFile = files.num_images - 1;
                                 } else if (file_type == ASTRONOMICAL_DATA_TYPE) {
-                                    printf("patata2\n");
                                      conn.mcgruder[index].receivingFile = files.num_astronomical_data - 1;
                                 }
-                                printf("patata3\n");
+
                                 //Lionel is ready to receive a file
                                 receiving_file = 1;
 
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
-                                printf("patata4\n");
+
                                 if (response == SOCKET_CONNECTION_KO) {
                                     receiving_file = 0;
                                     disconnectMcGruder(index);
                                 }
-                                printf("patata5\n");
                             } else {
-                                printf("skere4\n");
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_KO_HEADER, 0, NULL);
-                                printf("skere5\n");
+
                                 if (response == SOCKET_CONNECTION_KO) {
                                         disconnectMcGruder(index);
                                 }
-                                printf("skere6\n");
                             }
                         }
                     } else if (strcmp(header, EMPTY_HEADER) == 0) {
@@ -610,11 +604,10 @@ int receiveMetadata(char *data) {
      bytes = asprintf(&buff, RECEIVING_FILE_MSG, file_name);
      write(1, buff, bytes);
      free(buff);
-     printf("skere1\n");
+
      asprintf(&full_name, FILES_PATH, file_name);
 
      if (createFile(full_name) == FILE_CREATED_KO) type = ERROR_TYPE;
-     printf("skere2 - type: %d\n", type);
      free(file_type);
      free(file_size);
      free(file_name);

@@ -125,16 +125,6 @@ int createFile(char *filename);
 
 /*******************************************************************
 *
-* @Name: removeFile
-* @Purpose: Remove a file
-* @Arguments: filename (in) = name of the file
-* @Return: --
-*
-********************************************************************/
-void removeFile(char *filename);
-
-/*******************************************************************
-*
 * @Name: typeToLowerCase
 * @Purpose: Override the type with the same type in lower case
 * @Arguments: filename (in) = name of the file
