@@ -51,7 +51,9 @@ char *calculateChecksum(char *filename) {
                     dup(pipe_fd[1]);
 
                     //Calculate the md5sum
-                    execl("/usr/bin/md5sum","md5sum", filename, NULL);
+                    char *cmd = "/usr/bin/md5sum";
+                    char *argv[3] = {"md5sum", filename, NULL};
+                    execvp(cmd, argv);
 
                     close(pipe_fd[1]);
                     break;
@@ -91,7 +93,7 @@ int getFileSize(char *filename) {
 }
 
 int createFile(char *filename) {
-    int fd = open(filename, O_CREAT | O_EXCL, 0644);
+    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
     if (fd < 0) {
         return FILE_CREATED_KO;

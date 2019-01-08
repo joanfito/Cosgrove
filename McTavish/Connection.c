@@ -43,8 +43,9 @@ int connectLionel(Configuration config) {
      int socket_fd, frame_ok, response;
      char type, *header, *data;
      short length;
-     
+
      socket_fd = openLionel(config);
+
      if (socket_fd == CONNECTION_FAILED) {
           return CONNECTION_FAILED;
      }

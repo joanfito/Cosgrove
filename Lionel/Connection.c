@@ -250,6 +250,9 @@ int disconnectMcTavish(int index) {
      conn.mctavish[index].fd = SOCKET_CONNECTION_FAILED;
      free(conn.mctavish[index].scientist_name);
 
+     //Wait until the thread ends
+     pthread_detach(conn.mctavish[index].id_thread);
+
      return DISCONNECT_MCTAVISH_OK;
 }
 
@@ -336,7 +339,6 @@ void *mcgruderListener(void *arg) {
 
                                 //Lionel is ready to receive a file
                                 receiving_file = 1;
-
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
 
                                 if (response == SOCKET_CONNECTION_KO) {
@@ -402,6 +404,7 @@ void *mcgruderListener(void *arg) {
                             Time time = files.astronomical_data[conn.mcgruder[index].receivingFile].time;
 
                             response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, FILE_OK_HEADER, 0, NULL);
+
                             if (response == SOCKET_CONNECTION_KO) {
                                  disconnectMcGruder(index);
                             } else {
@@ -688,6 +691,7 @@ int receiveChecksum(int index, int type, char *data) {
     }
 
     asprintf(&path, FILES_PATH, name);
+
     checksum = calculateChecksum(path);
 
     if (strlen(checksum) < 1) {
@@ -697,6 +701,7 @@ int receiveChecksum(int index, int type, char *data) {
 
             //If we can't calculate the checksum, we don't accept the file
             response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, CHECK_KO_HEADER, 0, NULL);
+
             if (response == SOCKET_CONNECTION_KO) {
                 disconnectMcGruder(index);
             }
@@ -706,6 +711,7 @@ int receiveChecksum(int index, int type, char *data) {
     if (strcmp(checksum, data) == 0) {
         //Both checksums are equal
         response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, CHECK_OK_HEADER, 0, NULL);
+
         if (response == SOCKET_CONNECTION_KO) {
             free(path);
             free(name);
