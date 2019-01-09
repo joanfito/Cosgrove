@@ -22,6 +22,7 @@ Time createTimeFromName(char *name) {
     char *aux;
     int i, j;
 
+    //If the aren't at least 16 characters it is an invalid name for sure
     if (strlen(name) < 16) {
         time.hour = TIME_ERROR_VALUE;
         time.minute = TIME_ERROR_VALUE;

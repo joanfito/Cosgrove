@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
                     }
 
                     //Create the shared memory region for data of the astronomical data file
-                    id_file = shmget(IPC_PRIVATE, sizeof(char) * 1000, IPC_CREAT | IPC_EXCL | 0600);
+                    id_file = shmget(IPC_PRIVATE, sizeof(char) * 500, IPC_CREAT | IPC_EXCL | 0600);
 
                     if (id_file == -1) {
                         shmctl(id_received_data, IPC_RMID, NULL);

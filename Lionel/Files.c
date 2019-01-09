@@ -16,6 +16,7 @@ extern semaphore sem_file;
 Files createFiles() {
      Files files;
 
+     //Initialize the variables
      files.images = (Image*)calloc(1, sizeof(Image));
      files.astronomical_data = (AstronomicalData*)calloc(1, sizeof(AstronomicalData));
      files.num_images = 0;

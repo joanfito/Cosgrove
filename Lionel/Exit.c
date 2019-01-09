@@ -24,14 +24,15 @@ void closeLionel() {
 void safeClose() {
      int i, files_saved;
 
+     //Dump the received files into the log files
      files_saved = saveReceivedFiles(files);
+
      if (files_saved == KALKUN_SAVED_OK) {
          //Close Lionel if the files are saved
          //Close the mcgruders
          for (i = 0; i < conn.num_mcgruder_processes; i++) {
               if (conn.mcgruder[i].fd != SOCKET_CONNECTION_FAILED) {
                    disconnectMcGruder(i);
-                   free(conn.mcgruder[i].telescope_name);
               }
          }
 
@@ -39,14 +40,14 @@ void safeClose() {
          for (i = 0; i < conn.num_mctavish_processes; i++) {
               if (conn.mctavish[i].fd != SOCKET_CONNECTION_FAILED) {
                    disconnectMcTavish(i);
-                   free(conn.mctavish[i].scientist_name);
               }
          }
 
+         //Close the sockets
          close(conn.mcgruder_fd);
          close(conn.mctavish_fd);
 
-         //Free the memory
+         //Free the allocated memory
          free(conn.mcgruder);
          free(conn.mctavish);
          free(config.ip);

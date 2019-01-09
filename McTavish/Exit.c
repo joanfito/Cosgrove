@@ -25,11 +25,15 @@ void safeClose() {
      char *buff;
      int bytes = 0;
 
+     //Show the disconnection message
      bytes = asprintf(&buff, DISCONNECTION_PATTERN, config.name);
      write(1, buff, bytes);
      free(buff);
 
+     //Close the socket
      close(socket_fd);
+
+     //Free the allocated memory
      free(config.name);
      free(config.ip);
 

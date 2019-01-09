@@ -24,6 +24,7 @@ void scanDirectory(int socket_fd) {
                write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
                break;
           case 0:
+               //Execute the getnames script
                execl("/bin/bash","bash","./getnames.sh",NULL);
                break;
           default:
@@ -39,10 +40,12 @@ void scanDirectory(int socket_fd) {
                     while (!endOfFile) {
                         output = readLine(fd, '\n', &endOfFile);
 
+                        //If it's one of the valid file types we attemp to send it
                         if (isImage(output) || isAstronomicalData(output)) {
                              file = calloc(1, sizeof(char) * (strlen(output) + 1));
                              strcpy(file, output);
 
+                             //Show the founded file message
                              bytes = asprintf(&buff, FILE_FOUND_PATTERN, file);
                              write(1, buff, bytes);
                              free(buff);
@@ -129,6 +132,7 @@ int sendImage(char *filename, int socket_fd) {
 
      bytes = asprintf(&fullname, FILES_PATH, filename);
 
+     //Open the image in read only mode
      fd = open(fullname, O_RDONLY);
 
      if (fd < 0) {
@@ -270,6 +274,7 @@ int sendImage(char *filename, int socket_fd) {
          return SEND_IMAGE_KO;
      }
 
+     //Once the image is sended, we remove it from McGruder
      removeFile(fullname);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
 
@@ -288,6 +293,7 @@ int sendAstronomicalData(char *filename, int socket_fd) {
 
      bytes = asprintf(&fullname, FILES_PATH, filename);
 
+     //Open the astronomical data file in read only mode
      fd = open(fullname, O_RDONLY);
 
      if (fd < 0) {
@@ -378,6 +384,7 @@ int sendAstronomicalData(char *filename, int socket_fd) {
          return SEND_TXT_KO;
      }
 
+     //Once the file is sended, we remove it from McGruder
      removeFile(fullname);
      write(1, FILE_SENT_MSG, strlen(FILE_SENT_MSG));
 
@@ -398,6 +405,7 @@ void removeFile(char *filename) {
                write(1, SCAN_ERROR_MSG, strlen(SCAN_ERROR_MSG));
                break;
           case 0:
+               //Remove the image from the disk
                execl("/bin/rm","rm", "-rf", filename, NULL);
                break;
           default:
@@ -455,12 +463,14 @@ int getFileSize(char *filename) {
      int fd, compt = 0;
      char aux;
 
+     //Open the file in read only mode
      fd = open(filename, O_RDONLY);
 
      if (fd < 0) {
          close(fd);
          return -1;
      } else {
+         //Read the file one by one character (1 byte each)
          while (read(fd, &aux, 1) > 0) compt++;
      }
 
@@ -478,15 +488,18 @@ void printProgressbar(float percentage, int *progress_completed) {
           *progress_completed = (int)percentage / 10;
      }
 
+     //Print as many '#' as progress (from 0 to 10) has been completed
      for (i = 0; i < *progress_completed; i++) {
           current_progress[i] = '#';
      }
 
+     //Print as many ' ' as progress left to complete
      for (i = *progress_completed; i < 10; i++) {
           current_progress[i] = ' ';
      }
      current_progress[i] = '\0';
 
+     //Print the progressbar
      bytes = asprintf(&bar, PROGRESSBAR_PATTERN, current_progress, percentage);
      write(1, bar, bytes);
      free(bar);

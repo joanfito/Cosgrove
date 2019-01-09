@@ -48,3 +48,4 @@ cp ./test_files/Telescope3/* ./TEST_ZONE/Telescope3/files
 cp ./test_files/Telescope4/* ./TEST_ZONE/Telescope4/files
 
 cp ./test_files/Telescope5/* ./TEST_ZONE/Telescope5/files
+

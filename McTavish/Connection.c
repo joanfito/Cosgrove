@@ -19,6 +19,7 @@ int openLionel(Configuration config) {
          return CONNECTION_FAILED;
      }
 
+     //Configure the server
      memset(&servidor, 0, sizeof(servidor));
      servidor.sin_family = AF_INET;
      servidor.sin_port = htons(config.port);
@@ -31,6 +32,7 @@ int openLionel(Configuration config) {
           servidor.sin_addr.s_addr = inet_addr(host->h_name);
      }
 
+     //Try to connect to Lionel's server
      if (connect(socket_fd, (void *)&servidor, sizeof(servidor)) < 0) {
           close(socket_fd);
           return CONNECTION_FAILED;
@@ -62,6 +64,7 @@ int connectLionel(Configuration config) {
           return CONNECTION_FAILED;
      }
 
+     //If it's a CONNECTION_OK_HEADER, the connection is successful, otherwise, is not
      response = strcmp(header, CONNECTION_OK_HEADER) == 0 ? socket_fd : CONNECTION_FAILED;
 
      free(data);

@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
         write(1, INVALID_ARGS_ERROR_MSG, strlen(INVALID_ARGS_ERROR_MSG));
         return -1;
     } else {
+        //Read the McTavish configuration file
         config = readConfiguration(argv[1]);
         if (!invalidConfig(config)) {
             char *buff;

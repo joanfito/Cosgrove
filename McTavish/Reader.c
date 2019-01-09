@@ -17,6 +17,8 @@ char *readLine(int fd, char delimiter, int* endOfFile) {
      input = malloc(sizeof(char) * 1);
      size = 1;
      end = 0;
+
+     //Read the buffer one character by one until the delimiter or EOF
      while(end == 0) {
           read_value = read(fd, &buff, 1);
           if (read_value <= 0) {
@@ -72,6 +74,7 @@ char *readData(int fd, int length, int *endOfFile) {
      char *input;
      input = malloc(sizeof(char) * (length + 1));
 
+     //Read all the data (length bytes)
      for (i = 0; i < length; i++) {
           read_value = read(fd, &buff, 1);
           if (read_value <= 0) {

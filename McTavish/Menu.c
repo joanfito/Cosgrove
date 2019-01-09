@@ -13,6 +13,7 @@
 extern int socket_fd;
 
 void showMenu() {
+    //Print the menu options
     write(1, MENU_HEADER, strlen(MENU_HEADER));
     write(1, MENU_OPTION_1_MSG, strlen(MENU_OPTION_1_MSG));
     write(1, MENU_OPTION_2_MSG, strlen(MENU_OPTION_2_MSG));
@@ -37,6 +38,7 @@ int selectOption() {
         option = atoi(input);
         free(input);
 
+        //Only options 1, 2 and 3 are valid
         if (option < 1 || option > 3) write(1, MENU_INPUT_ERROR, strlen(MENU_INPUT_ERROR));
     } while(option < 1 || option > 3);
 

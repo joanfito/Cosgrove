@@ -14,10 +14,12 @@ extern Connection conn;
 extern Files files;
 extern int id_received_data, id_last_data, id_last_file;
 extern semaphore sem_sync_paquita, sem_file, sem_received;
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
 Connection createConnection() {
      Connection new;
 
+     //Initialize the values
      new.mcgruder_fd = 0;
      new.mctavish_fd = 0;
      new.mcgruder = (McGruder*)calloc(1, sizeof(McGruder));
@@ -59,7 +61,7 @@ int createSocketForMcGruder(Configuration config) {
 
 int acceptMcGruder(int socket_fd) {
      struct sockaddr_in mcgruder;
-     int mcgruder_fd;
+     int mcgruder_fd = 0;
      socklen_t mcgruder_len;
 
      //Accept the new connection
@@ -75,9 +77,9 @@ int acceptMcGruder(int socket_fd) {
 
 int connectMcGruder(int index) {
      char buff[100];
-     char type, *header, *data;
+     char type = 0, *header, *data;
      short length;
-     int response, bytes = 0;
+     int response = 0, bytes = 0;
 
      //Read the frame
      response = readFrame(conn.mcgruder[index].fd, &type, &header, &length, &data);
@@ -132,6 +134,7 @@ int disconnectMcGruder(int index) {
      write(1, buff, bytes);
      free(buff);
 
+     //Close the socket and free the allocated memory
      close(conn.mcgruder[index].fd);
      conn.mcgruder[index].fd = SOCKET_CONNECTION_FAILED;
      free(conn.mcgruder[index].telescope_name);
@@ -173,7 +176,7 @@ int createSocketForMcTavish(Configuration config) {
 
 int acceptMcTavish(int socket_fd) {
     struct sockaddr_in mctavish;
-    int mctavish_fd;
+    int mctavish_fd = 0;
     socklen_t mctavish_len;
 
     //Accept the new connection
@@ -189,9 +192,9 @@ int acceptMcTavish(int socket_fd) {
 
 int connectMcTavish(int index) {
     char buff[100];
-    char type, *header, *data;
+    char type = 0, *header, *data;
     short length;
-    int response, bytes = 0;
+    int response = 0, bytes = 0;
 
     //Read the frame
     response = readFrame(conn.mctavish[index].fd, &type, &header, &length, &data);
@@ -301,10 +304,10 @@ int readFrame(int socket_fd, char *type, char **header, short *length, char **da
 }
 
 void *mcgruderListener(void *arg) {
-     char type, *header, *data, *file_name, *error_msg;
+     char type = 0, *header, *data, *file_name, *error_msg;
      LastFile *shared_last_file;
      short length;
-     int response, end = 0, file_type, receiving_file = 0, checksum_ok, bytes;
+     int response = 0, end = 0, file_type = ERROR_TYPE, receiving_file = 0, checksum_ok, bytes;
 
      int index = *((int*)arg);
 
@@ -337,6 +340,9 @@ void *mcgruderListener(void *arg) {
                                      conn.mcgruder[index].receivingFile = files.num_astronomical_data - 1;
                                 }
 
+                                //Once the index is saved, unlock the files variable
+                                pthread_mutex_unlock(&mtx);
+
                                 //Lionel is ready to receive a file
                                 receiving_file = 1;
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_OK_HEADER, 0, NULL);
@@ -346,6 +352,7 @@ void *mcgruderListener(void *arg) {
                                     disconnectMcGruder(index);
                                 }
                             } else {
+                                pthread_mutex_unlock(&mtx);
                                 response = sendFrame(conn.mcgruder[index].fd, (char)FILE_FRAME_TYPE, SEND_KO_HEADER, 0, NULL);
 
                                 if (response == SOCKET_CONNECTION_KO) {
@@ -447,9 +454,9 @@ void *mcgruderListener(void *arg) {
 }
 
 void *mctavishListener(void *arg) {
-    char type, *header, *data;
+    char type = 0, *header, *data;
     short length;
-    int response, end = 0;
+    int response = 0, end = 0;
     ReceivedData *shared_received_data;
     ReceivedAstronomicalData *shared_last_data;
     char *send_data;
@@ -574,6 +581,9 @@ int receiveMetadata(char *data) {
      }
      file_name[j] = '\0';
 
+     //Guarantee mutual exclusion to files variable
+     pthread_mutex_lock(&mtx);
+
      //Check if it's an image or astronomical data
      if (isImage(file_type)) {
          type = IMAGE_TYPE;
@@ -633,9 +643,11 @@ void receiveFrame(int index, short length, int type, char *data) {
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "jpg");
         asprintf(&full_name, FILES_PATH, name);
 
+        //Open the file in order to write and append the new data into the existing one
         file_fd = open(full_name, O_WRONLY | O_APPEND);
 
         if (file_fd >= 0) {
+            //Write the received data
             write(file_fd, data, length);
             files.images[conn.mcgruder[index].receivingFile].bytes_readed += length;
             printProgressbar(((float)files.images[conn.mcgruder[index].receivingFile].bytes_readed/(float)files.images[conn.mcgruder[index].receivingFile].size) * 100, &files.images[conn.mcgruder[index].receivingFile].percentage, name, &files.images[conn.mcgruder[index].receivingFile].entered);
@@ -659,9 +671,11 @@ void receiveFrame(int index, short length, int type, char *data) {
         asprintf(&name, FILE_NAME_PATTERN, date.year, date.month, date.day, time.hour, time.minute, time.second, "txt");
         asprintf(&full_name, FILES_PATH, name);
 
+        //Open the file in order to write and append the new data into the existing one
         file_fd = open(full_name, O_WRONLY | O_APPEND);
 
         if (file_fd >= 0) {
+            //Write the received data
             write(file_fd, data, length);
             close(file_fd);
         }
@@ -742,7 +756,7 @@ int receiveChecksum(int index, int type, char *data) {
 }
 
 void *mcgruderServer(void *arg) {
-    int aux_fd;
+    int aux_fd = MC_GRUDER_ACCEPT_FAILED;
     while (1) {
         write(1, WAITING_MCGRUDER_MSG, strlen(WAITING_MCGRUDER_MSG));
 
@@ -769,7 +783,7 @@ void *mcgruderServer(void *arg) {
 }
 
 void *mctavishServer(void *arg) {
-    int aux_fd;
+    int aux_fd = MC_TAVISH_ACCEPT_FAILED;
 
     while (1) {
         write(1, WAITING_MCTAVISH_MSG, strlen(WAITING_MCTAVISH_MSG));

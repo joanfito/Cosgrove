@@ -29,16 +29,20 @@ Configuration readConfiguration(char *filename) {
          //If the file has more than 3 lines, we ignore them
          switch (line_counter) {
               case 0:
+                    //Read the scientist name
                     config.name = malloc(sizeof(char) * (strlen(output) + 1));
                     strcpy(config.name, output);
                     break;
               case 1:
+                    //Read the IP or the domain
                     config.ip = malloc(sizeof(char) * (strlen(output) + 1));
                     strcpy(config.ip, output);
 
+                    //Indicate if it is whether an IP or a domain
                     config.is_ip = isIp(config.ip);
                     break;
               case 2:
+                    //Read the port
                     config.port = atoi(output);
                     break;
          }
@@ -68,20 +72,25 @@ void printConfig(Configuration config) {
      int bytes;
 
      write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
+
+     //Print the scientist name
      bytes = asprintf(&buff, "\t-> Scientist name: %s\n", config.name);
      write(1, buff, bytes);
      free(buff);
 
      if (config.is_ip == 1) {
+          //Print the IP adress
           bytes = asprintf(&buff, "\t-> IP: %s\n", config.ip);
           write(1, buff, bytes);
           free(buff);
      } else {
+          //Print the domain
           bytes = asprintf(&buff, "\t-> Host name: %s\n", config.ip);
           write(1, buff, bytes);
           free(buff);
      }
 
+     //Print the port
      bytes = asprintf(&buff, "\t-> Port: %d\n", config.port);
      write(1, buff, bytes);
      free(buff);
@@ -98,6 +107,7 @@ int isIp(char *ip) {
     while (ip[i] != '\0') {
         j = 0;
 
+        //Read until a dot or the end of the string
         while (ip[i] != '.' && ip[i] != '\0') {
             aux[j++] = ip[i++];
             aux = realloc(aux, sizeof(char) * (j + 1));
@@ -106,6 +116,7 @@ int isIp(char *ip) {
         if (ip[i] == '.') i++;
         aux[j] = '\0';
 
+        //Search any char (a/A->z/Z)
         for (k = 0; k < j; k++) {
             if ((aux[k] >= 'a' && aux[k] <= 'z') || (aux[k] >= 'A' && aux[k] <= 'Z')) {
                 free(aux);

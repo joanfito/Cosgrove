@@ -83,6 +83,7 @@ void imageReceived(char *name) {
     char *full_name;
     asprintf(&full_name, FILES_PATH, name);
 
+    //Update the image counter and the total images size
     received_data.count_images++;
     received_data.images_size_kb += (float)getFileSize(full_name) / 1000.0;
 
@@ -99,6 +100,7 @@ void astronomicalDataReceived(char *name) {
     min_size = last_astronomical_data.min_size;
     max_size = last_astronomical_data.max_size;
 
+    //Process the content of the last astronomical data file
     processAstronomicalData(name, &count_constellations, &acum_density, &min_size, &max_size);
 
     //Update the values

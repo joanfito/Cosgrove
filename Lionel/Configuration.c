@@ -29,16 +29,20 @@ Configuration readConfiguration(char *filename) {
          //If the file has more than 4 lines, we ignore them
          switch (line_counter) {
               case 0:
+                    //Read the IP adress
                     config.ip = malloc(sizeof(char) * (strlen(output) + 1));
                     strcpy(config.ip, output);
                     break;
               case 1:
+                    //Read the port where McGruders will connect
                     config.mcgruder_port = atoi(output);
                     break;
               case 2:
+                    //Read the port where McTavishes will connect
                     config.mctavish_port = atoi(output);
                     break;
               case 3:
+                    //Read the seconds
                     config.seconds = atoi(output);
                     break;
          }
@@ -68,15 +72,23 @@ void printConfig(Configuration config) {
     int bytes;
 
     write(1, PRINT_CONFIG_INI, strlen(PRINT_CONFIG_INI));
+
+    //Print the IP adress
     bytes = asprintf(&buff, "\t-> IP: %s\n", config.ip);
     write(1, buff, bytes);
     free(buff);
+
+    //Print the port for McGruders
     bytes = asprintf(&buff, "\t-> Port for McGruder: %d\n", config.mcgruder_port);
     write(1, buff, bytes);
     free(buff);
+
+    //Print the port for McTavishes
     bytes = asprintf(&buff, "\t-> Port for McTavish: %d\n", config.mctavish_port);
     write(1, buff, bytes);
     free(buff);
+
+    //Print the seconds
     bytes = asprintf(&buff, "\t-> Seconds: %d\n", config.seconds);
     write(1, buff, bytes);
     free(buff);
